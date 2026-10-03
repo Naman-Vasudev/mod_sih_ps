@@ -63,8 +63,8 @@ export function calculateSessionScore(
       assetHealth * 0.10
   );
 
-  // Deduct heavy penalties for fratricide
-  finalScore = Math.max(0, finalScore - fratricides * 25 - collateralIncidents * 10);
+  // Deduct heavy penalties for fratricide and collateral damage (clamped 0-100)
+  finalScore = Math.max(0, Math.min(100, finalScore - fratricides * 25 - collateralIncidents * 10));
 
   // Letter Grade
   let grade: SessionResult['grade'] = 'F';

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { storageService, type CurrentUser } from '../storage/storageService';
+import { soundFx } from '../utils/audio';
 import { Shield, Target, Zap, BarChart3, Trophy, Play, Radio, Activity, ChevronRight, AlertTriangle } from 'lucide-react';
 
 interface HomePageProps {
@@ -37,7 +38,10 @@ const FeatureCard: React.FC<{
   onClick: () => void;
 }> = ({ icon, title, desc, cta, color, borderColor, bgIcon, onClick }) => (
   <div
-    onClick={onClick}
+    onClick={() => {
+      soundFx.playClick();
+      onClick();
+    }}
     className="group relative rounded-xl p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1.5 overflow-hidden flex flex-col justify-between"
     style={{
       background: 'linear-gradient(135deg, rgba(4,14,9,0.98), rgba(2,8,5,0.99))',

@@ -18,7 +18,7 @@ import {
 } from 'chart.js';
 import { Line, Radar, Bar } from 'react-chartjs-2';
 import jsPDF from 'jspdf';
-import { BarChart3, Download, Play, Pause, FileText } from 'lucide-react';
+import { BarChart3, Download, Play, Pause, FileText, CheckCircle2, XCircle } from 'lucide-react';
 
 ChartJS.register(
   CategoryScale,
@@ -38,21 +38,17 @@ interface AARDashboardPageProps {
 }
 
 export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser }) => {
-  const [sessions, setSessions] = useState<SessionResult[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [sessions] = useState<SessionResult[]>(() => storageService.getSessions());
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
+    const data = storageService.getSessions();
+    return data.length > 0 ? data[0].id : null;
+  });
 
   // Replay Player State
   const [replayTime, setReplayTime] = useState<number>(0);
   const [isPlayingReplay, setIsPlayingReplay] = useState<boolean>(false);
   const [replaySpeed, setReplaySpeed] = useState<number>(1);
-
-  useEffect(() => {
-    const data = storageService.getSessions();
-    setSessions(data);
-    if (data.length > 0) {
-      setSelectedSessionId((prev) => prev ?? data[0].id);
-    }
-  }, []);
+  const [expandedTrack, setExpandedTrack] = useState<string | null>(null);
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) || sessions[0];
 
@@ -137,8 +133,14 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
     ],
   };
 
-  // Replay current frame calculation
-  const currentFrame = selectedSession.replayFrames?.find((f) => Math.abs(f.timestamp - replayTime) < 0.3);
+  // Replay current frame calculation: find nearest frame for smooth scrubbing
+  const frames = selectedSession.replayFrames || [];
+  let currentFrame = null;
+  if (frames.length > 0) {
+    currentFrame = frames.reduce((prev, curr) =>
+      Math.abs(curr.timestamp - replayTime) < Math.abs(prev.timestamp - replayTime) ? curr : prev
+    );
+  }
   const replayTracks = new Map();
   const replayEntities: any[] = [];
 
@@ -397,6 +399,105 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
             </div>
           </div>
         </div>
+
+        {/* Selected Session Decision Tree Breakdown */}
+        {selectedSession.entityEvaluations && selectedSession.entityEvaluations.length > 0 && (
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 space-y-4 shadow-xl">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
+              <h2 className="text-sm font-bold text-cyan-300">
+                DECISION-TREE NODE EVALUATIONS: {selectedSession.scenarioName} ({selectedSession.traineeName})
+              </h2>
+              <span className="text-xs text-zinc-500">
+                PASS/FAIL INSPECTION FOR EVERY SPAWNED THREAT TRACK
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono">
+                <thead>
+                  <tr className="border-b border-zinc-800 text-zinc-400 text-[11px] uppercase">
+                    <th className="py-2 px-3">TRACK ID</th>
+                    <th className="py-2 px-3">TRUE THREAT TYPE</th>
+                    <th className="py-2 px-3">OPERATOR CLASSIFICATION</th>
+                    <th className="py-2 px-3">DETECTION TIME</th>
+                    <th className="py-2 px-3">EVALUATION</th>
+                    <th className="py-2 px-3 text-right">ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {selectedSession.entityEvaluations.map((evalItem) => {
+                    const isExpanded = expandedTrack === evalItem.trackId;
+                    return (
+                      <React.Fragment key={evalItem.trackId}>
+                        <tr className="hover:bg-zinc-800/40 transition">
+                          <td className="py-3 px-3 font-bold text-emerald-300">{evalItem.trackId}</td>
+                          <td className="py-3 px-3 uppercase text-zinc-300">{evalItem.trueType}</td>
+                          <td className="py-3 px-3 uppercase text-cyan-300">{evalItem.userClassification}</td>
+                          <td className="py-3 px-3 text-zinc-400">
+                            {evalItem.detectionTime !== null ? `${evalItem.detectionTime.toFixed(1)}s` : 'MISSED'}
+                          </td>
+                          <td className="py-3 px-3 font-bold">
+                            <span className={`px-2 py-0.5 rounded text-[10px] uppercase ${
+                              evalItem.verdict === 'PASS'
+                                ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                                : evalItem.verdict === 'PARTIAL'
+                                ? 'bg-amber-950 text-amber-300 border border-amber-800'
+                                : 'bg-red-950 text-red-300 border border-red-800'
+                            }`}>
+                              {evalItem.verdict}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <button
+                              onClick={() => setExpandedTrack(isExpanded ? null : evalItem.trackId)}
+                              className="text-xs text-cyan-400 hover:underline"
+                            >
+                              {isExpanded ? 'Hide Nodes' : 'Inspect Tree'}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={6} className="bg-zinc-950 p-4 border-l-4 border-cyan-500">
+                              <div className="space-y-2">
+                                <span className="text-[11px] font-bold text-cyan-300">
+                                  TACTICAL DECISION NODES FOR {evalItem.trackId}:
+                                </span>
+                                <div className="space-y-1.5 text-xs">
+                                  {evalItem.decisionNodes.map((node) => (
+                                    <div
+                                      key={node.id}
+                                      className={`p-2 rounded border flex items-start space-x-2 ${
+                                        node.passed
+                                          ? 'bg-emerald-950/40 border-emerald-800/60 text-emerald-300'
+                                          : 'bg-red-950/40 border-red-800/60 text-red-300'
+                                      }`}
+                                    >
+                                      {node.passed ? (
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                      ) : (
+                                        <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                                      )}
+                                      <div>
+                                        <span className="font-bold block">{node.title}</span>
+                                        <span className="text-[11px] opacity-90">{node.reason}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

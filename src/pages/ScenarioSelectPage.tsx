@@ -4,6 +4,7 @@ import { SCRIPTED_SCENARIOS } from '../scenarios/scripted';
 import { generateProceduralScenario } from '../scenarios/generator';
 import { computeAdaptiveDifficulty } from '../adaptive/difficulty';
 import { storageService, type CurrentUser } from '../storage/storageService';
+import { soundFx } from '../utils/audio';
 import { Target, Zap, Play, Sparkles } from 'lucide-react';
 
 interface ScenarioSelectPageProps {
@@ -18,7 +19,7 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
   const [tab, setTab] = useState<'scripted' | 'procedural' | 'adaptive'>('scripted');
 
   // Procedural Generator State
-  const [seed, setSeed] = useState<number>(Math.floor(Math.random() * 899999) + 100000);
+  const [seed, setSeed] = useState<number>(() => Math.floor(Math.random() * 899999) + 100000);
   const [difficulty, setDifficulty] = useState<number>(5);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>('day');
   const [weather, setWeather] = useState<WeatherCondition>('clear');
@@ -31,10 +32,12 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
   const adaptiveRec = computeAdaptiveDifficulty(userSessions, currentDiff);
 
   const handleRandomizeSeed = () => {
+    soundFx.playClick();
     setSeed(Math.floor(Math.random() * 899999) + 100000);
   };
 
   const handleLaunchProcedural = () => {
+    soundFx.playClick();
     const sc = generateProceduralScenario({
       seed,
       difficulty,
@@ -46,6 +49,7 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
   };
 
   const handleLaunchAdaptive = () => {
+    soundFx.playClick();
     const newSeed = Math.floor(Math.random() * 899999) + 100000;
     const sc = generateProceduralScenario({
       seed: newSeed,
@@ -72,7 +76,10 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
           {/* Mode Tabs */}
           <div className="flex space-x-2 mt-4 md:mt-0 bg-zinc-900 p-1 rounded-lg border border-zinc-800 text-xs">
             <button
-              onClick={() => setTab('scripted')}
+              onClick={() => {
+                soundFx.playClick();
+                setTab('scripted');
+              }}
               className={`px-4 py-2 rounded font-bold transition ${
                 tab === 'scripted'
                   ? 'bg-emerald-950 text-emerald-300 border border-emerald-700'
@@ -82,7 +89,10 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
               SCRIPTED (5 PRESETS)
             </button>
             <button
-              onClick={() => setTab('procedural')}
+              onClick={() => {
+                soundFx.playClick();
+                setTab('procedural');
+              }}
               className={`px-4 py-2 rounded font-bold transition ${
                 tab === 'procedural'
                   ? 'bg-cyan-950 text-cyan-300 border border-cyan-700'
@@ -92,7 +102,10 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
               PROCEDURAL GENERATOR
             </button>
             <button
-              onClick={() => setTab('adaptive')}
+              onClick={() => {
+                soundFx.playClick();
+                setTab('adaptive');
+              }}
               className={`px-4 py-2 rounded font-bold transition ${
                 tab === 'adaptive'
                   ? 'bg-amber-950 text-amber-300 border border-amber-700'
@@ -140,7 +153,10 @@ export const ScenarioSelectPage: React.FC<ScenarioSelectPageProps> = ({
                 </div>
 
                 <button
-                  onClick={() => onSelectScenario(scenario)}
+                  onClick={() => {
+                    soundFx.playClick();
+                    onSelectScenario(scenario);
+                  }}
                   className="w-full py-2.5 bg-emerald-900 hover:bg-emerald-800 text-emerald-200 text-xs font-bold rounded flex items-center justify-center space-x-2 transition"
                 >
                   <Play className="w-4 h-4 fill-current" />

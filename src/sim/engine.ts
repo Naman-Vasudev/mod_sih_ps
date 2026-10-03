@@ -145,7 +145,7 @@ export function tickSimulation(
 
   // 3. Sensor Sweep & Track Updates (for active entities spawned)
   const activeSpawnedEntities = updatedEntities.filter((e) => simTime >= e.spawnTime && e.active);
-  const { updatedTracks, newSweepAngle } = updateSensorData(
+  const { updatedTracks, newSweepAngle, updatedGhostBlips } = updateSensorData(
     activeSpawnedEntities,
     state.tracks,
     state.sensorState,
@@ -157,6 +157,7 @@ export function tickSimulation(
   const sensorState = {
     ...state.sensorState,
     radarSweepAngle: newSweepAngle,
+    activeGhostBlips: updatedGhostBlips,
   };
 
   // Check new detected tracks to trigger events
@@ -269,7 +270,20 @@ export function executeTraineeAction(
   const track = tracks.get(trackId);
   const entity = entities.find((e) => e.trackId === trackId && e.active);
 
-  if (!track || !entity) return state;
+  if (!track) return state;
+
+  if (!entity) {
+    if (actionType === 'engage') {
+      eventsLog.push({
+        id: `evt-inactive-${timestamp}`,
+        time: Math.round(timestamp),
+        text: `TARGET INACTIVE: Track ${trackId} is already neutralized or out of sector.`,
+        type: 'warn',
+      });
+      return { ...state, eventsLog, actionRecords };
+    }
+    return state;
+  }
 
   switch (actionType) {
     case 'detect': {

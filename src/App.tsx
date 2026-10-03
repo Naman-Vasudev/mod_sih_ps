@@ -27,17 +27,17 @@ export function App() {
 
   const [isHotkeysOpen, setIsHotkeysOpen] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const handleSaveProfile = (user: CurrentUser) => {
     setCurrentUser(user);
     storageService.setCurrentUser(user);
   };
 
-  const handleResetData = () => {
-    if (window.confirm('Reset all demo session histories and profiles to initial state?')) {
-      storageService.resetDemoData();
-      window.location.reload();
-    }
+  const handleConfirmReset = () => {
+    storageService.resetDemoData();
+    setIsResetModalOpen(false);
+    window.location.reload();
   };
 
   const handleStartAdaptive = () => {
@@ -77,7 +77,7 @@ export function App() {
         onNavigate={(screen) => setCurrentScreen(screen)}
         currentUser={currentUser}
         onOpenHotkeys={() => setIsHotkeysOpen(true)}
-        onResetData={handleResetData}
+        onResetData={() => setIsResetModalOpen(true)}
         hasActiveSession={currentScreen === 'simulator' && !!selectedScenario}
       />
 
@@ -130,6 +130,35 @@ export function App() {
       {/* Global Modals */}
       <HotkeysModal isOpen={isHotkeysOpen} onClose={() => setIsHotkeysOpen(false)} />
       <TutorialModal isOpen={isTutorialOpen} onClose={() => setIsTutorialOpen(false)} />
+
+      {/* Reset Confirmation Modal */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-red-700/80 rounded-xl max-w-md w-full p-6 text-zinc-100 font-mono shadow-2xl space-y-4">
+            <div className="text-red-400 font-bold text-sm tracking-wider flex items-center space-x-2 border-b border-zinc-800 pb-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              <span>CONFIRM SYSTEM FACTORY RESET</span>
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+              Reset all session histories, operator metrics, and trainee profile records to initial factory baseline? This will reload the application with clean demo data.
+            </p>
+            <div className="flex justify-end space-x-3 pt-2">
+              <button
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-lg transition"
+              >
+                CANCEL
+              </button>
+              <button
+                onClick={handleConfirmReset}
+                className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition shadow-lg shadow-red-950"
+              >
+                CONFIRM FACTORY RESET
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

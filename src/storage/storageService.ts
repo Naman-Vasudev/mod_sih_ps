@@ -2,11 +2,15 @@ import type { SessionResult, TraineeProfile } from '../types';
 import { generateFeedback } from '../ai/instructor';
 
 const STORAGE_KEYS = {
+  SCHEMA_VERSION: 'cuas_schema_version',
   CURRENT_USER: 'cuas_current_user',
   SESSIONS: 'cuas_session_history',
   PROFILES: 'cuas_trainee_profiles',
   API_KEY: 'cuas_llm_api_key',
+  SETTINGS: 'cuas_app_settings',
 };
+
+const CURRENT_SCHEMA_VERSION = '2.1';
 
 export interface CurrentUser {
   name: string;
@@ -80,6 +84,42 @@ export function generateSeedSessions(): SessionResult[] {
 
   return sampleConfigs.map((cfg, index) => {
     const timestamp = new Date(now - cfg.daysAgo * day - index * 3600000).toISOString();
+    const duration = 90;
+
+    // Generate synthetic replay frames so AAR scrubber works immediately
+    const replayFrames = [];
+    for (let t = 0; t <= duration; t += 2) {
+      const progress = t / duration;
+      const r1 = Math.max(200, 2600 - progress * 2200);
+      const angle1 = (index * 45 + progress * 60) * (Math.PI / 180);
+      const r2 = Math.max(300, 2200 - progress * 1900);
+      const angle2 = (index * 45 + 140 + progress * 40) * (Math.PI / 180);
+
+      replayFrames.push({
+        timestamp: t,
+        entities: [
+          {
+            id: `ENT-${index}-1`,
+            trackId: 'TRK-101',
+            x: Math.cos(angle1) * r1,
+            y: Math.sin(angle1) * r1,
+            altitude: 85,
+            trueType: cfg.scenario.includes('Friendly') ? 'friendly' as const : 'hostile_attack' as const,
+            status: progress > 0.8 && cfg.score > 70 ? 'destroyed' as const : 'active' as const,
+          },
+          {
+            id: `ENT-${index}-2`,
+            trackId: 'TRK-102',
+            x: Math.cos(angle2) * r2,
+            y: Math.sin(angle2) * r2,
+            altitude: 60,
+            trueType: cfg.scenario.includes('Bird') ? 'bird' as const : 'hostile_recon' as const,
+            status: progress > 0.85 && cfg.score > 75 ? 'jammed' as const : 'active' as const,
+          },
+        ],
+      });
+    }
+
     const session: SessionResult = {
       id: `seed-session-${index + 1}`,
       traineeName: cfg.name,
@@ -89,7 +129,7 @@ export function generateSeedSessions(): SessionResult[] {
       seed: cfg.seed,
       difficulty: cfg.diff,
       timestamp,
-      duration: 110,
+      duration,
       finalScore: cfg.score,
       grade: cfg.grade,
       subScores: {
@@ -105,11 +145,63 @@ export function generateSeedSessions(): SessionResult[] {
       fratricides: cfg.frats,
       collateralIncidents: cfg.coll,
       missedHostiles: cfg.missed,
-      entityEvaluations: [],
+      entityEvaluations: [
+        {
+          entityId: `ENT-${index}-1`,
+          trackId: 'TRK-101',
+          trueType: cfg.scenario.includes('Friendly') ? 'friendly' : 'hostile_attack',
+          userClassification: cfg.score > 70 ? (cfg.scenario.includes('Friendly') ? 'friendly' : 'hostile_attack') : 'unknown',
+          detectionTime: 4.2,
+          detectionScore: cfg.det,
+          classificationScore: cfg.cls,
+          engagementScore: cfg.eng,
+          decisionNodes: [
+            {
+              id: 'node-id-1',
+              title: 'Target Category Verification',
+              passed: cfg.score >= 60,
+              scoreDelta: 0,
+              reason: cfg.score >= 60 ? 'PASS: Target category verified correctly.' : 'FAIL: Misclassified during radar contact.',
+            },
+            {
+              id: 'node-eng-1',
+              title: 'Engagement Protection & Weapon Selection',
+              passed: cfg.frats === 0,
+              scoreDelta: cfg.frats > 0 ? -40 : 30,
+              reason: cfg.frats > 0 ? 'FAIL: Engaged friendly asset (Fratricide incident).' : 'PASS: Appropriate countermeasure executed safely.',
+            },
+          ],
+          verdict: cfg.score >= 80 ? 'PASS' : cfg.score >= 55 ? 'PARTIAL' : 'FAIL',
+        },
+        {
+          entityId: `ENT-${index}-2`,
+          trackId: 'TRK-102',
+          trueType: cfg.scenario.includes('Bird') ? 'bird' : 'hostile_recon',
+          userClassification: cfg.score > 70 ? (cfg.scenario.includes('Bird') ? 'bird' : 'hostile_recon') : 'hostile_attack',
+          detectionTime: 6.8,
+          detectionScore: Math.max(0, cfg.det - 10),
+          classificationScore: Math.max(0, cfg.cls - 8),
+          engagementScore: Math.max(0, cfg.eng - 5),
+          decisionNodes: [
+            {
+              id: 'node-id-2',
+              title: 'Target Category Verification',
+              passed: cfg.coll === 0,
+              scoreDelta: 0,
+              reason: cfg.coll > 0 ? 'FAIL: Wasted interceptors on non-hostile decoy/bird.' : 'PASS: Correct non-hostile / recon verification.',
+            },
+          ],
+          verdict: cfg.score >= 70 ? 'PASS' : 'PARTIAL',
+        },
+      ],
       mistakeCategories: cfg.frats > 0 ? ['Engaged Friendly Asset (Fratricide)'] : cfg.coll > 0 ? ['Wasted Countermeasures on Decoys'] : cfg.missed > 0 ? ['Missed Hostile Attack Drones'] : [],
       aiDebriefFeedback: [],
-      replayFrames: [],
-      actionRecords: [],
+      replayFrames,
+      actionRecords: [
+        { timestamp: 5.2, actionType: 'detect', trackId: 'TRK-101' },
+        { timestamp: 12.4, actionType: 'classify', trackId: 'TRK-101', payload: { classification: 'hostile_attack', confidence: 'high' } },
+        { timestamp: 24.1, actionType: 'engage', trackId: 'TRK-101', payload: { type: 'hard_kill' } },
+      ],
     };
     session.aiDebriefFeedback = generateFeedback(session);
     return session;
@@ -117,44 +209,96 @@ export function generateSeedSessions(): SessionResult[] {
 }
 
 export const storageService = {
+  _checkSchemaMigration(): void {
+    try {
+      const ver = localStorage.getItem(STORAGE_KEYS.SCHEMA_VERSION);
+      if (ver !== CURRENT_SCHEMA_VERSION) {
+        localStorage.removeItem(STORAGE_KEYS.SESSIONS);
+        localStorage.removeItem(STORAGE_KEYS.PROFILES);
+        localStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
+      }
+    } catch {
+      // Storage unavailable
+    }
+  },
+
   getCurrentUser(): CurrentUser {
+    this._checkSchemaMigration();
     try {
       const data = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-      if (data) return JSON.parse(data);
-    } catch (e) {}
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed && typeof parsed.name === 'string' && typeof parsed.unit === 'string') {
+          return parsed;
+        }
+      }
+    } catch {
+      // Storage error
+    }
     return { name: 'SGT. Vance Miller', unit: 'Alpha Squad 1st Platoon' };
   },
 
   setCurrentUser(user: CurrentUser): void {
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    try {
+      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
+    } catch {
+      // Quota exceeded
+    }
   },
 
   getSessions(): SessionResult[] {
+    this._checkSchemaMigration();
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SESSIONS);
-      if (data) return JSON.parse(data);
-    } catch (e) {}
-    // Initial Seed Data if empty
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Corrupted storage
+    }
     const seed = generateSeedSessions();
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(seed));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(seed));
+    } catch {
+      // Ignore
+    }
     return seed;
   },
 
   saveSession(session: SessionResult): void {
     const sessions = this.getSessions();
     sessions.unshift(session);
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions.slice(0, 50)));
+    } catch {
+      // Quota exceeded
+    }
 
     // Update or create trainee profile
     this.updateTraineeProfile(session);
   },
 
   getProfiles(): TraineeProfile[] {
+    this._checkSchemaMigration();
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PROFILES);
-      if (data) return JSON.parse(data);
-    } catch (e) {}
-    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_TRAINEES));
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // Fallback
+    }
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_TRAINEES));
+    } catch {
+      // Ignore
+    }
     return INITIAL_TRAINEES;
   },
 

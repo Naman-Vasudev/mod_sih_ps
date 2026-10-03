@@ -33,20 +33,6 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Maximum radar display radius in meters
-  const MAX_RADIUS = 3500;
-  const centerX = width / 2;
-  const centerY = height / 2;
-  const scale = (width / 2 - 30) / MAX_RADIUS; // pixels per meter
-
-  // Convert sim meters (x, y) to canvas pixels
-  const toCanvasCoords = (x: number, y: number) => {
-    return {
-      cx: centerX + x * scale,
-      cy: centerY - y * scale, // Canvas Y is inverted
-    };
-  };
-
   // Canvas click handler to pick track
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -54,11 +40,17 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
+    const MAX_RAD = 3500;
+    const cX = width / 2;
+    const cY = height / 2;
+    const sc = (width / 2 - 30) / MAX_RAD;
+
     let closestTrackId: string | null = null;
     let minDistance = 25; // 25px click radius
 
     tracks.forEach((track, trackId) => {
-      const { cx, cy } = toCanvasCoords(track.estimatedX, track.estimatedY);
+      const cx = cX + track.estimatedX * sc;
+      const cy = cY - track.estimatedY * sc;
       const dist = Math.hypot(clickX - cx, clickY - cy);
       if (dist < minDistance) {
         minDistance = dist;
@@ -77,11 +69,25 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Maximum radar display radius in meters
+    const MAX_RADIUS = 3500;
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const scale = (width / 2 - 30) / MAX_RADIUS; // pixels per meter
+
+    // Convert sim meters (x, y) to canvas pixels
+    const toCanvasCoords = (x: number, y: number) => {
+      return {
+        cx: centerX + x * scale,
+        cy: centerY - y * scale, // Canvas Y is inverted
+      };
+    };
+
     // Clear canvas
     ctx.fillStyle = timeOfDay === 'night' ? '#040906' : '#07120b';
     ctx.fillRect(0, 0, width, height);
 
-    // 1. Draw Urban Buildings / Terrain shadows
+    // 1. Draw Terrain features
     if (terrain === 'urban') {
       ctx.fillStyle = 'rgba(20, 35, 25, 0.45)';
       ctx.strokeStyle = 'rgba(34, 70, 48, 0.6)';
@@ -101,6 +107,28 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
         ctx.fillRect(cx, cy - bh, bw, bh);
         ctx.strokeRect(cx, cy - bh, bw, bh);
       });
+    } else if (terrain === 'mountain') {
+      // Topographic mountain ridges
+      ctx.strokeStyle = 'rgba(120, 113, 108, 0.35)';
+      ctx.lineWidth = 1;
+      const ridges = [
+        [[-2400, 1800], [-1800, 2200], [-1200, 2600]],
+        [[1600, -2200], [2200, -1800], [2700, -1200]],
+        [[-2800, -800], [-2100, -600], [-1400, -900]],
+      ];
+      ridges.forEach((ridge) => {
+        ctx.beginPath();
+        ridge.forEach(([rx, ry], idx) => {
+          const { cx, cy } = toCanvasCoords(rx, ry);
+          if (idx === 0) ctx.moveTo(cx, cy);
+          else ctx.lineTo(cx, cy);
+        });
+        ctx.stroke();
+      });
+      ctx.fillStyle = 'rgba(168, 162, 158, 0.3)';
+      ctx.font = '8px monospace';
+      ctx.fillText('RIDGE ELEV: 1240m', centerX + 180 * scale, centerY - 2100 * scale);
+      ctx.fillText('CREST ELEV: 1480m', centerX - 2100 * scale, centerY - 1800 * scale);
     }
 
     // 2. Draw Range Rings & Compass Grids
@@ -188,7 +216,46 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
       ctx.stroke();
     }
 
-    // 5. Ground Truth overlay (if Replay Mode)
+    // 5. Weather visual effects
+    if (weather === 'fog') {
+      const fogGrad = ctx.createRadialGradient(centerX, centerY, 600 * scale, centerX, centerY, MAX_RADIUS * scale);
+      fogGrad.addColorStop(0, 'rgba(148, 163, 184, 0.02)');
+      fogGrad.addColorStop(0.7, 'rgba(148, 163, 184, 0.12)');
+      fogGrad.addColorStop(1, 'rgba(148, 163, 184, 0.28)');
+      ctx.fillStyle = fogGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (weather === 'rain') {
+      // Atmospheric rain noise clutter streaks
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.08)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 28; i++) {
+        const rx = ((i * 137) % width);
+        const ry = ((i * 241) % height);
+        ctx.beginPath();
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - 8, ry + 16);
+        ctx.stroke();
+      }
+    }
+
+    // 6. Draw False Clutter / Ghost Blips from Degraded Sensors
+    if (sensorState.radarActive && sensorState.activeGhostBlips?.length) {
+      sensorState.activeGhostBlips.forEach((g) => {
+        const { cx, cy } = toCanvasCoords(g.x, g.y);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.45)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.7)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(234, 179, 8, 0.6)';
+        ctx.font = '8px monospace';
+        ctx.fillText('CLUTTER', cx + 6, cy + 2);
+      });
+    }
+
+    // 7. Ground Truth overlay (if Replay Mode)
     if (isReplayMode && entities) {
       entities.forEach((entity) => {
         if (!entity.active && entity.status !== 'impacted') return;
@@ -206,29 +273,55 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
       });
     }
 
-    // 6. Draw Detected Track Blips
+    // 8. Draw Detected Track Blips
     tracks.forEach((track, trackId) => {
       const { cx, cy } = toCanvasCoords(track.estimatedX, track.estimatedY);
       const isSelected = trackId === selectedTrackId;
       const isUnack = !track.userAcknowledged;
 
       // Draw blip marker
-      ctx.beginPath();
-      ctx.arc(cx, cy, isSelected ? 7 : 5, 0, Math.PI * 2);
+      const isColorblind = typeof window !== 'undefined' && localStorage.getItem('cuas_colorblind') === 'true';
 
-      let blipColor = '#10b981'; // Green standard radar
+      let blipColor = '#eab308'; // Unknown starts as yellow
       if (track.userClassification === 'hostile_attack' || track.userClassification === 'swarm') {
         blipColor = '#ef4444'; // Red hostile
       } else if (track.userClassification === 'hostile_recon') {
         blipColor = '#f97316'; // Amber recon
       } else if (track.userClassification === 'friendly') {
-        blipColor = '#3b82f6'; // Blue friendly
+        blipColor = '#38bdf8'; // Blue friendly
       } else if (track.userClassification === 'civilian' || track.userClassification === 'bird') {
-        blipColor = '#eab308'; // Yellow decoy
+        blipColor = '#94a3b8'; // Grey-white civilian/bird
       }
 
       ctx.fillStyle = blipColor;
-      ctx.fill();
+      ctx.strokeStyle = blipColor;
+
+      if (isColorblind) {
+        // Colorblind shapes:
+        // Hostile: Diamond/Triangle
+        // Friendly: Square
+        // Decoy: Cross/Hexagon
+        // Unknown: Standard Circle
+        if (track.userClassification.startsWith('hostile') || track.userClassification === 'swarm') {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy - (isSelected ? 9 : 7));
+          ctx.lineTo(cx + (isSelected ? 8 : 6), cy + (isSelected ? 7 : 5));
+          ctx.lineTo(cx - (isSelected ? 8 : 6), cy + (isSelected ? 7 : 5));
+          ctx.closePath();
+          ctx.fill();
+        } else if (track.userClassification === 'friendly') {
+          const sz = isSelected ? 6 : 4.5;
+          ctx.fillRect(cx - sz, cy - sz, sz * 2, sz * 2);
+        } else {
+          ctx.beginPath();
+          ctx.arc(cx, cy, isSelected ? 7 : 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, isSelected ? 7 : 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Pulsing alert ring for unacknowledged tracks
       if (isUnack) {

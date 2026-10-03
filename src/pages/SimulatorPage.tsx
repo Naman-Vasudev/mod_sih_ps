@@ -10,8 +10,11 @@ import { calculateSessionScore } from '../scoring/rubric';
 import { generateFeedback } from '../ai/instructor';
 import { RadarCanvas } from '../components/RadarCanvas';
 import { HUDPanel } from '../components/HUDPanel';
+import { MissionBriefingModal } from '../components/MissionBriefingModal';
+import { TutorialModal } from '../components/TutorialModal';
 import type { CurrentUser } from '../storage/storageService';
-import { Play, Pause, Award, Sun, Moon, Cloud, CloudRain, Map, AlertTriangle, BookOpen } from 'lucide-react';
+import { soundFx } from '../utils/audio';
+import { Play, Pause, Award, Sun, Moon, Cloud, CloudRain, Map, AlertTriangle, HelpCircle, Sparkles } from 'lucide-react';
 
 interface SimulatorPageProps {
   scenario: ScenarioConfig;
@@ -31,21 +34,52 @@ const ENV_BADGE_ICONS: Record<string, React.ReactNode> = {
   mountain: <Map style={{ width: 11, height: 11 }} />,
 };
 
+const FIXED_STEP = 1 / 30; // 30Hz deterministic fixed physics step
+
 export const SimulatorPage: React.FC<SimulatorPageProps> = ({
   scenario,
   currentUser,
   onFinishSession,
-  onOpenTutorial,
+  onOpenTutorial: _onOpenTutorial,
 }) => {
-  const [simState, setSimState] = useState<SimulationState>(() =>
-    createSimulationEngine(scenario)
-  );
+  const [simState, setSimState] = useState<SimulationState>(() => {
+    const initial = createSimulationEngine(scenario);
+    return { ...initial, isPaused: true }; // Start paused for briefing
+  });
+
+  const [isBriefingOpen, setIsBriefingOpen] = useState(true);
+  const [isTutorialModalOpen, setIsTutorialModalOpen] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [isPracticeMode, setIsPracticeMode] = useState(false);
 
   const simRef = useRef<SimulationState>(simState);
-  simRef.current = simState;
+  useEffect(() => {
+    simRef.current = simState;
+  }, [simState]);
 
   const animFrameId = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+
+  // Countdown controller
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown > 0) {
+      const timer = setTimeout(() => setCountdown(countdown - 1), 900);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(() => {
+        setCountdown(null);
+        setSimState((prev) => ({ ...prev, isPaused: false }));
+      }, 700);
+      return () => clearTimeout(timer);
+    }
+  }, [countdown]);
+
+  const handleStartFromBriefing = (practice: boolean) => {
+    setIsPracticeMode(practice);
+    setIsBriefingOpen(false);
+    setCountdown(3);
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -53,49 +87,148 @@ export const SimulatorPage: React.FC<SimulatorPageProps> = ({
       const current = simRef.current;
       const selTrack = current.selectedTrackId;
       switch (e.key.toLowerCase()) {
-        case ' ': e.preventDefault(); setSimState((prev) => ({ ...prev, isPaused: !prev.isPaused })); break;
-        case 'd': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'detect', selTrack)); break;
-        case 'j': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'jam' })); break;
-        case 's': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'soft_kill' })); break;
-        case 'h': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'hard_kill' })); break;
-        case 'a': setSimState((prev) => executeTraineeAction(prev, 'alarm', null)); break;
-        case 'escape': setSimState((prev) => ({ ...prev, selectedTrackId: null })); break;
-        case '1': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'hostile_attack', confidence: 'high' })); break;
-        case '2': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'hostile_recon', confidence: 'high' })); break;
-        case '3': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'swarm', confidence: 'high' })); break;
-        case '4': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'friendly', confidence: 'high' })); break;
-        case '5': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'civilian', confidence: 'high' })); break;
-        case '6': if (selTrack) setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'bird', confidence: 'high' })); break;
+        case ' ':
+          e.preventDefault();
+          soundFx.playClick();
+          setSimState((prev) => ({ ...prev, isPaused: !prev.isPaused }));
+          break;
+        case 'd':
+          if (selTrack) {
+            soundFx.playRadarPing();
+            setSimState((prev) => executeTraineeAction(prev, 'detect', selTrack));
+          }
+          break;
+        case 'j':
+          if (selTrack) {
+            soundFx.playJammer();
+            setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'jam' }));
+          }
+          break;
+        case 's':
+          if (selTrack) {
+            soundFx.playJammer();
+            setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'soft_kill' }));
+          }
+          break;
+        case 'h':
+          if (selTrack) {
+            soundFx.playKineticFire();
+            setSimState((prev) => executeTraineeAction(prev, 'engage', selTrack, { type: 'hard_kill' }));
+          }
+          break;
+        case 'a':
+          soundFx.playAlarm();
+          setSimState((prev) => executeTraineeAction(prev, 'alarm', null));
+          break;
+        case 'escape':
+          soundFx.playClick();
+          setSimState((prev) => ({ ...prev, selectedTrackId: null }));
+          break;
+        case '1':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'hostile_attack', confidence: 'high' }));
+          }
+          break;
+        case '2':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'hostile_recon', confidence: 'high' }));
+          }
+          break;
+        case '3':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'swarm', confidence: 'high' }));
+          }
+          break;
+        case '4':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'friendly', confidence: 'high' }));
+          }
+          break;
+        case '5':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'civilian', confidence: 'high' }));
+          }
+          break;
+        case '6':
+          if (selTrack) {
+            soundFx.playClick();
+            setSimState((prev) => executeTraineeAction(prev, 'classify', selTrack, { classification: 'bird', confidence: 'high' }));
+          }
+          break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const accumulatorRef = useRef<number>(0);
+
   useEffect(() => {
     const loop = (timestamp: number) => {
-      if (lastTimeRef.current === null) lastTimeRef.current = timestamp;
-      const dt = Math.min(0.1, (timestamp - lastTimeRef.current) / 1000);
+      if (lastTimeRef.current === null) {
+        lastTimeRef.current = timestamp;
+      }
+      const rawDt = (timestamp - lastTimeRef.current) / 1000;
       lastTimeRef.current = timestamp;
+      const dt = Math.min(0.1, Math.max(0, rawDt));
+
       setSimState((prev) => {
-        if (prev.isPaused || prev.isCompleted) return prev;
-        return tickSimulation(prev, dt);
+        if (prev.isPaused || prev.isCompleted) {
+          accumulatorRef.current = 0;
+          return prev;
+        }
+
+        accumulatorRef.current += dt;
+        let next = prev;
+        while (accumulatorRef.current >= FIXED_STEP) {
+          next = tickSimulation(next, FIXED_STEP);
+          accumulatorRef.current -= FIXED_STEP;
+          if (next.isCompleted) break;
+        }
+        return next;
       });
+
       animFrameId.current = requestAnimationFrame(loop);
     };
+
     animFrameId.current = requestAnimationFrame(loop);
-    return () => { if (animFrameId.current) cancelAnimationFrame(animFrameId.current); };
+    return () => {
+      if (animFrameId.current) cancelAnimationFrame(animFrameId.current);
+    };
   }, []);
 
-  const handleSelectTrack = (trackId: string) => setSimState((prev) => ({ ...prev, selectedTrackId: trackId }));
-  const handleDetectTrack = (trackId: string) => setSimState((prev) => executeTraineeAction(prev, 'detect', trackId));
-  const handleClassifyTrack = (trackId: string, classification: UserClassification, confidence: 'low' | 'med' | 'high') =>
+  const handleSelectTrack = (trackId: string) => {
+    soundFx.playClick();
+    setSimState((prev) => ({ ...prev, selectedTrackId: trackId }));
+  };
+  const handleDetectTrack = (trackId: string) => {
+    soundFx.playRadarPing();
+    setSimState((prev) => executeTraineeAction(prev, 'detect', trackId));
+  };
+  const handleClassifyTrack = (trackId: string, classification: UserClassification, confidence: 'low' | 'med' | 'high') => {
+    soundFx.playClick();
     setSimState((prev) => executeTraineeAction(prev, 'classify', trackId, { classification, confidence }));
-  const handleEngageTrack = (trackId: string, type: EngagementType) =>
+  };
+  const handleEngageTrack = (trackId: string, type: EngagementType) => {
+    if (type === 'hard_kill') soundFx.playKineticFire();
+    else soundFx.playJammer();
     setSimState((prev) => executeTraineeAction(prev, 'engage', trackId, { type }));
-  const handleSoundAlarm = () => setSimState((prev) => executeTraineeAction(prev, 'alarm', null));
-  const handleSlewCamera = (bearing: number) => setSimState((prev) => executeTraineeAction(prev, 'slew_camera', null, { bearing }));
+  };
+  const handleSoundAlarm = () => {
+    soundFx.playAlarm();
+    setSimState((prev) => executeTraineeAction(prev, 'alarm', null));
+  };
+  const handleSlewCamera = (bearing: number) => {
+    soundFx.playClick();
+    setSimState((prev) => executeTraineeAction(prev, 'slew_camera', null, { bearing }));
+  };
   const handleToggleSensor = (sensor: SensorType) => {
+    soundFx.playClick();
     setSimState((prev) => {
       const sensorState = { ...prev.sensorState };
       if (sensor === 'radar') sensorState.radarActive = !sensorState.radarActive;
@@ -118,8 +251,40 @@ export const SimulatorPage: React.FC<SimulatorPageProps> = ({
 
   const diffColor = scenario.difficulty >= 7 ? '#ef4444' : scenario.difficulty >= 4 ? '#f59e0b' : '#10b981';
 
+  // Dynamic Practice Mode Coaching Hint
+  let practiceHint: string | null = null;
+  if (isPracticeMode) {
+    const unackTrack = Array.from(simState.tracks.values()).find((t) => !t.userAcknowledged);
+    const selectedTrack = simState.selectedTrackId ? simState.tracks.get(simState.selectedTrackId) : null;
+    const selectedEntity = simState.entities.find((e) => e.trackId === simState.selectedTrackId && e.active);
+
+    if (unackTrack) {
+      practiceHint = `COACHING: New radar contact [${unackTrack.trackId}]! Click it and press [D] immediately to log quick detection.`;
+    } else if (selectedTrack && selectedEntity) {
+      if (selectedTrack.userClassification === 'unknown') {
+        if (selectedTrack.eoVisualConfidence < 0.3) {
+          practiceHint = `COACHING: Optical confidence is low. Click SLEW CAMERA to bearing ${Math.round(selectedTrack.estimatedBearing)}° to identify airframe.`;
+        } else {
+          practiceHint = `COACHING: Target visible in optical feed! Select classification [1-6] based on airframe geometry.`;
+        }
+      } else if (selectedEntity.trueType.startsWith('hostile')) {
+        if (selectedEntity.isAutonomous) {
+          practiceHint = `COACHING: WARNING! Threat has fiber-optic autonomous guidance. RF Jammer will NOT work. Fire Kinetic Interceptor [H] or sound alarm [A]!`;
+        } else if (selectedTrack.estimatedDistance <= 1800) {
+          practiceHint = `COACHING: Threat within 1800m RF jammer envelope. Press [J] to disable control link and save kinetic ammo!`;
+        }
+      } else if (selectedEntity.trueType === 'friendly') {
+        practiceHint = `COACHING CAUTION: Friendly patrol UAV detected! Do NOT fire kinetic weapons (fratricide penalty -25 pts). Monitor track safely.`;
+      } else if (selectedEntity.trueType === 'bird' || selectedEntity.trueType === 'civilian') {
+        practiceHint = `COACHING: Non-hostile contact. Conserve interceptors; do not expend countermeasures on decoys.`;
+      }
+    } else {
+      practiceHint = 'COACHING: Monitor perimeter. Select contacts to inspect multi-spectral sensor feeds.';
+    }
+  }
+
   return (
-    <div className="h-[calc(100vh-52px)] text-emerald-400 font-mono select-none flex flex-col" style={{ background: '#020408' }}>
+    <div className="h-[calc(100vh-52px)] text-emerald-400 font-mono select-none flex flex-col relative" style={{ background: '#020408' }}>
       {/* TOP MISSION BAR */}
       <div
         className="flex items-center justify-between px-4 py-1.5 text-xs shrink-0"
@@ -144,6 +309,12 @@ export const SimulatorPage: React.FC<SimulatorPageProps> = ({
           <span className="text-[9px] font-bold px-2 py-0.5 rounded tracking-widest" style={{ background: `${diffColor}15`, border: `1px solid ${diffColor}40`, color: diffColor }}>
             DIFF {scenario.difficulty}/10
           </span>
+          {isPracticeMode && (
+            <span className="px-2 py-0.5 rounded text-[9px] font-bold tracking-widest uppercase bg-cyan-950 text-cyan-300 border border-cyan-700 flex items-center space-x-1">
+              <Sparkles className="w-3 h-3 text-cyan-400" />
+              <span>PRACTICE MODE</span>
+            </span>
+          )}
           {hostileCount > 0 && (
             <div className="flex items-center space-x-1 animate-pulse">
               <AlertTriangle style={{ width: 12, height: 12, color: '#ef4444' }} />
@@ -166,15 +337,23 @@ export const SimulatorPage: React.FC<SimulatorPageProps> = ({
             <span className="text-[10px] tracking-widest">{simState.isPaused ? 'RESUME [SPACE]' : 'PAUSE [SPACE]'}</span>
           </button>
           <button
-            onClick={onOpenTutorial}
+            onClick={() => setIsTutorialModalOpen(true)}
             className="btn-tactical flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-bold text-[10px] tracking-widest transition-all text-zinc-500 hover:text-emerald-400"
             style={{ background: 'rgba(4,12,8,0.9)', border: '1px solid rgba(16,185,129,0.12)' }}
           >
-            <BookOpen style={{ width: 11, height: 11 }} />
-            <span>TUTORIAL</span>
+            <HelpCircle style={{ width: 12, height: 12 }} />
+            <span>HOW TO PLAY [?]</span>
           </button>
         </div>
       </div>
+
+      {/* Practice Mode Live Coaching Hint Bar */}
+      {isPracticeMode && practiceHint && (
+        <div className="bg-cyan-950/80 border-b border-cyan-700/60 px-4 py-1.5 text-xs text-cyan-200 flex items-center space-x-2 animate-pulse">
+          <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span className="font-bold tracking-wide">{practiceHint}</span>
+        </div>
+      )}
 
       {/* MAIN WORKSPACE */}
       <div className="flex-1 flex overflow-hidden">
@@ -277,6 +456,39 @@ export const SimulatorPage: React.FC<SimulatorPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* 3-2-1 COUNTDOWN OVERLAY */}
+      {countdown !== null && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center select-none">
+          <div className="space-y-4 text-center">
+            <div className="text-zinc-500 font-mono text-xs uppercase tracking-[0.3em] animate-pulse">
+              MISSION INITIALIZATION • DEFEND BASE (0,0)
+            </div>
+            <div className="text-8xl font-black text-emerald-400 font-mono tracking-tighter drop-shadow-2xl animate-bounce">
+              {countdown > 0 ? countdown : 'ENGAGE!'}
+            </div>
+            <div className="text-sm font-bold text-cyan-300 tracking-widest uppercase">
+              {countdown > 0 ? 'CALIBRATING SENSORS & PERIMETER GRIDS' : 'THREAT RADAR SWEEP ACTIVE'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MISSION BRIEFING MODAL */}
+      <MissionBriefingModal
+        scenario={scenario}
+        isOpen={isBriefingOpen}
+        onStartMission={handleStartFromBriefing}
+        onOpenTutorial={() => setIsTutorialModalOpen(true)}
+      />
+
+      {/* HOW TO PLAY TUTORIAL MODAL */}
+      <TutorialModal
+        isOpen={isTutorialModalOpen}
+        onClose={() => setIsTutorialModalOpen(false)}
+        scenarioName={scenario.name}
+        scenarioId={scenario.id}
+      />
     </div>
   );
 };

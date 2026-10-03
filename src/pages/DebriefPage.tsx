@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import type { SessionResult } from '../types';
 import { generateLLMFeedback } from '../ai/instructor';
 import { storageService } from '../storage/storageService';
-import { Award, CheckCircle2, XCircle, Play, BarChart3, Key, Sparkles, Home } from 'lucide-react';
+import { computeAdaptiveDifficulty } from '../adaptive/difficulty';
+import { soundFx } from '../utils/audio';
+import { Award, CheckCircle2, XCircle, Play, BarChart3, Key, Sparkles, Home, Target, HelpCircle, ShieldAlert } from 'lucide-react';
 
 interface DebriefPageProps {
   sessionResult: SessionResult;
@@ -21,6 +23,13 @@ export const DebriefPage: React.FC<DebriefPageProps> = ({
   const [feedback, setFeedback] = useState<string[]>(sessionResult.aiDebriefFeedback);
   const [isGeneratingLLM, setIsGeneratingLLM] = useState(false);
   const [expandedTrack, setExpandedTrack] = useState<string | null>(null);
+  const [showScoringHelp, setShowScoringHelp] = useState(false);
+
+  // Compute adaptive recommendation for next mission
+  const userSessions = storageService.getSessions().filter((s) => s.traineeName === sessionResult.traineeName);
+  const profiles = storageService.getProfiles();
+  const currentDiff = profiles.find((p) => p.name === sessionResult.traineeName)?.currentDifficulty ?? sessionResult.difficulty;
+  const adaptiveRec = computeAdaptiveDifficulty(userSessions, currentDiff);
 
   const handleSaveApiKeyAndGenerate = async () => {
     storageService.setLLMApiKey(apiKey);
@@ -63,7 +72,10 @@ export const DebriefPage: React.FC<DebriefPageProps> = ({
 
           <div className="flex space-x-3">
             <button
-              onClick={onGoHome}
+              onClick={() => {
+                soundFx.playClick();
+                onGoHome();
+              }}
               className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 text-xs font-bold rounded flex items-center space-x-1.5"
             >
               <Home className="w-4 h-4" />
@@ -71,7 +83,10 @@ export const DebriefPage: React.FC<DebriefPageProps> = ({
             </button>
 
             <button
-              onClick={onGoToReplay}
+              onClick={() => {
+                soundFx.playClick();
+                onGoToReplay();
+              }}
               className="px-4 py-2 bg-amber-950 hover:bg-amber-900 text-amber-300 border border-amber-700 text-xs font-bold rounded flex items-center space-x-1.5"
             >
               <BarChart3 className="w-4 h-4" />
@@ -79,7 +94,10 @@ export const DebriefPage: React.FC<DebriefPageProps> = ({
             </button>
 
             <button
-              onClick={onNextMission}
+              onClick={() => {
+                soundFx.playClick();
+                onNextMission();
+              }}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-extrabold rounded flex items-center space-x-1.5 shadow-lg shadow-emerald-950"
             >
               <Play className="w-4 h-4 fill-current" />
@@ -96,34 +114,111 @@ export const DebriefPage: React.FC<DebriefPageProps> = ({
             <div className="text-6xl font-black tracking-tighter">{sessionResult.grade}</div>
             <div className="text-xl font-bold">{sessionResult.finalScore} / 100 PTS</div>
             <span className="text-[10px] text-zinc-400">ASSET HEALTH: {sessionResult.assetHealthRemaining}%</span>
+            <button
+              onClick={() => setShowScoringHelp(!showScoringHelp)}
+              className="mt-2 text-[10px] text-cyan-400 hover:text-cyan-300 flex items-center space-x-1 underline"
+            >
+              <HelpCircle className="w-3 h-3" />
+              <span>{showScoringHelp ? 'Hide Scoring Rubric' : 'How Scoring Works'}</span>
+            </button>
           </div>
 
           {/* Subscores Grid */}
           <div className="md:col-span-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 font-bold">DETECTION SPEED</span>
+              <span className="text-[10px] text-zinc-400 font-bold">DETECTION SPEED (25%)</span>
               <div className="text-2xl font-bold text-emerald-400">{sessionResult.subScores.detection}%</div>
               <span className="text-[10px] text-zinc-500">Radar & RF Ack</span>
             </div>
 
             <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 font-bold">CLASSIFICATION</span>
+              <span className="text-[10px] text-zinc-400 font-bold">CLASSIFICATION (25%)</span>
               <div className="text-2xl font-bold text-cyan-400">{sessionResult.subScores.classification}%</div>
               <span className="text-[10px] text-zinc-500">Visual EO Match</span>
             </div>
 
             <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 font-bold">ENGAGEMENT DECISION</span>
+              <span className="text-[10px] text-zinc-400 font-bold">ENGAGEMENT DECISION (30%)</span>
               <div className="text-2xl font-bold text-amber-400">{sessionResult.subScores.engagement}%</div>
               <span className="text-[10px] text-zinc-500">Tactical Tree Pass</span>
             </div>
 
             <div className="bg-zinc-900 p-4 rounded-lg border border-zinc-800 flex flex-col justify-between">
-              <span className="text-[10px] text-zinc-400 font-bold">RESOURCE EFFICIENCY</span>
+              <span className="text-[10px] text-zinc-400 font-bold">RESOURCE EFFICIENCY (10%)</span>
               <div className="text-2xl font-bold text-purple-400">{sessionResult.subScores.efficiency}%</div>
               <span className="text-[10px] text-zinc-500">Ammo & Jammer Use</span>
             </div>
           </div>
+        </div>
+
+        {/* How Scoring Works Panel */}
+        {showScoringHelp && (
+          <div className="bg-zinc-900/90 border border-cyan-800/80 rounded-lg p-5 space-y-3 text-xs text-zinc-300 shadow-xl">
+            <div className="flex items-center space-x-2 text-cyan-300 font-bold border-b border-zinc-800 pb-2">
+              <HelpCircle className="w-4 h-4" />
+              <span>TACTICAL SCORING RUBRIC & PENALTY SYSTEM</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-[11px] leading-relaxed">
+              <div className="p-3 bg-zinc-950 rounded border border-zinc-800 space-y-1">
+                <span className="text-emerald-400 font-bold block">1. DETECTION SPEED (25%)</span>
+                <p>&lt;5.0s = 100 pts | 5-10s = 75 pts | 10-20s = 40 pts | &gt;20s or Missed = 0 pts. Evaluates radar acknowledgment timeliness.</p>
+              </div>
+              <div className="p-3 bg-zinc-950 rounded border border-zinc-800 space-y-1">
+                <span className="text-cyan-400 font-bold block">2. CLASSIFICATION ACCURACY (25%)</span>
+                <p>Exact Category & Subtype = 100 pts | Right Category, wrong subtype = 60 pts | Wrong Category = 0 pts.</p>
+              </div>
+              <div className="p-3 bg-zinc-950 rounded border border-zinc-800 space-y-1">
+                <span className="text-amber-400 font-bold block">3. ENGAGEMENT TREE (30%)</span>
+                <p>Interception before 500m perimeter; weapon selection suitability (RF Jammer for RF drones, Kinetic for autonomous).</p>
+              </div>
+              <div className="p-3 bg-zinc-950 rounded border border-zinc-800 space-y-1">
+                <span className="text-purple-400 font-bold block">4. RESOURCE EFFICIENCY (10%)</span>
+                <p>Penalizes hard-kill interceptor waste on birds/decoys (-30 pts/shot) and excessive fire past 4 rounds.</p>
+              </div>
+              <div className="p-3 bg-zinc-950 rounded border border-zinc-800 space-y-1">
+                <span className="text-red-400 font-bold block">5. ASSET INTEGRITY (10%)</span>
+                <p>Remaining health percentage of defended central base asset (0-100%). Alarm reduces impact damage by 50%.</p>
+              </div>
+              <div className="p-3 bg-zinc-950 rounded border border-red-900/60 space-y-1">
+                <span className="text-red-400 font-bold block flex items-center space-x-1">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>CRITICAL PENALTIES</span>
+                </span>
+                <p className="text-red-300 font-bold">-25 PTS PER FRATRICIDE (friendly fire)! -10 pts per civilian/decoy collateral engagement.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Adaptive Difficulty Next Mission Recommendation Card */}
+        <div className="bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-950 border border-amber-600/50 rounded-lg p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shadow-xl">
+          <div className="space-y-1.5 flex-1">
+            <div className="flex items-center space-x-2">
+              <Target className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-extrabold uppercase tracking-wider text-amber-300">
+                ADAPTIVE DIFFICULTY ENGINE RECOMMENDATION
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                NEXT: LEVEL {adaptiveRec.nextDifficulty}/10
+              </span>
+              {adaptiveRec.targetWeakness !== 'none' && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                  TARGETING: {adaptiveRec.targetWeakness.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed font-sans">
+              {adaptiveRec.explanation}
+            </p>
+          </div>
+
+          <button
+            onClick={onNextMission}
+            className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-black font-extrabold text-xs rounded-lg flex items-center space-x-2 shrink-0 shadow-lg shadow-amber-950 transition-all hover:scale-[1.02]"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>LAUNCH ADAPTIVE MISSION &rarr;</span>
+          </button>
         </div>
 
         {/* AI Instructor Debrief Feedback */}

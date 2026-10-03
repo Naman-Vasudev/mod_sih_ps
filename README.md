@@ -4,123 +4,105 @@ An advanced, software-only military C-UAS (Counter-Unmanned Aircraft Systems) si
 
 ---
 
-## Quick Start Guide
+## Screenshot & UI Placeholders
+
+```
++----------------------------------------------------------------------------------------------------+
+| [C-UAS] HOME | SCENARIOS | SIMULATOR | DEBRIEF | AAR | LEADERBOARD        [THEME] [AUDIO] [COLORBLIND] |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|  +--------------------------------------------+  +-----------------------------------------------+ |
+|  | RADAR SCOPE (2D TACTICAL PPI)              |  | HUD STATUS & MULTI-SPECTRAL SENSOR SUITE      | |
+|  |                                            |  |                                               | |
+|  |             .  - - - .                     |  |  ASSET HEALTH: [████████████████████] 100%    | |
+|  |         . '     |     ' .                  |  |  INTERCEPTOR AMMO: 8 / 8                      | |
+|  |       /         |         \                |  |  JAMMER COOLDOWN: READY [READY]               | |
+|  |      |      TRK-01 (▲)     |               |  |  BASE ALARM: INACTIVE                         | |
+|  |      |----------+----------|               |  +-----------------------------------------------+ |
+|  |      |      (0,0)[HQ]      |               |  | ACTIVE SENSORS: [RADAR] [EO/IR] [RF] [ACOUST] | |
+|  |       \         |         /                |  +-----------------------------------------------+ |
+|  |         . '     |     ' .                  |  | TRACK LIST & TARGET INSPECTOR                 | |
+|  |             ' - - - '                      |  | - TRK-01: 640m @ 045° | SPD: 25m/s | ALT: 120m| |
+|  |                                            |  |   [D] DETECT | [1-6] CLASSIFY | [J/S/H] ENGAGE| |
+|  |  [300m / 500m / 800m Range Rings]          |  +-----------------------------------------------+ |
+|  +--------------------------------------------+  | CHRONOLOGICAL TACTICAL EVENT LOG              | |
+|                                                  +-----------------------------------------------+ |
++----------------------------------------------------------------------------------------------------+
+```
+
+---
+
+## Quick Start & Verification
 
 ### Prerequisites
 - Node.js (v18+ recommended)
 - NPM (v9+)
 
-### Installation & Running
+### Local Development
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Launch local dev server
+# 2. Run linter and type-checker
+npm run lint
+npx tsc -b
+
+# 3. Launch local dev server (default port 3000)
 npm run dev
 ```
 
-Open your browser at `http://localhost:5173`.
+Open your browser at `http://localhost:3000`.
 
----
+### Production Build & Static Preview
+This application builds into a self-contained static single-page app (SPA) that can be hosted on static platforms (e.g. Vercel, Netlify, GitHub Pages, or offline military intranet web servers):
+```bash
+# Build production bundle to dist/
+npm run build
 
-## App Screens & User Workflow
-
-1. **Home / Trainee Profile**: Enter rank/name and squad unit. View rolling performance metrics and quick launch buttons for Adaptive Mode, Scenario Library, AAR Dashboard, and Leaderboard.
-2. **Scenario Select**: Choose from 5 scripted missions, generate reproducible random scenarios using Mulberry32 PRNG seeds, or run Adaptive Mode.
-3. **Simulator (Core Game)**: 2D top-down tactical radar scope centered on defended base asset (0,0). Toggle active sensors (Radar, EO/IR Camera, RF Detector, Acoustic Array), slew optical lens, acknowledge blips, classify target types, and execute RF Jamming, Soft-Kill, or Hard-Kill Kinetic Interceptors.
-4. **Debrief**: Post-mission evaluation featuring letter grades (S, A, B, C, D, F), sub-score radar charts, rule-based & optional LLM AI instructor debrief notes, and per-entity decision tree pass/fail node inspection.
-5. **AAR Dashboard**: Historical session trends, spider charts, unit mistake category aggregations, interactive timeline replay player with ground-truth revealed, and PDF/JSON export options.
-6. **Unit Leaderboard**: Unit readiness index, squad selection filter, operator ranking table, and qualification badges.
-
----
-
-## System Architecture
-
-```
-+-------------------------------------------------------------------------------+
-|                             C-UAS REACT APP (Vite)                            |
-+-----------------------+-----------------------+-------------------------------+
-                        |                       |
-       +----------------v----------------+      |
-       |     TACTICAL SIM ENGINE         |      |
-       |  - Physics (entities.ts)        |      |
-       |  - Sensors (sensors.ts)         |      |
-       |  - Mechanics (engine.ts)        |      |
-       +----------------+----------------+      |
-                        |                       |
-       +----------------v----------------+      |
-       |     SCENARIO GENERATOR          |      |
-       |  - Scripted (scripted.ts)       |      |
-       |  - PRNG (mulberry32)            |      |
-       +----------------+----------------+      |
-                        |                       |
-       +----------------v----------------+      |      +------------------------+
-       |     DECISION TREE SCORING       |      |      |  LOCALSTORAGE PERSIST  |
-       |  - Rubric (rubric.ts)           |======+=====>|  - Sessions             |
-       |  - Trees (decisionTree.ts)      |             |  - Profiles            |
-       +----------------+----------------+             |  - Pre-seeded Data     |
-                        |                              +------------------------+
-       +----------------v----------------+
-       |   AI INSTRUCTOR & ADAPTIVE      |
-       |  - Debrief (instructor.ts)      |
-       |  - Scaling (difficulty.ts)      |
-       +---------------------------------+
+# Preview production build locally on port 3000
+npm run preview
 ```
 
 ---
 
-## Tactical Scoring Rubric
+## Verified Feature Matrix
 
-Missions are evaluated across 5 quantitative dimensions:
-
-1. **Detection Speed (25%)**:
-   - `< 5.0s`: 100 pts (Excellent)
-   - `5.0s - 10.0s`: 75 pts (Good)
-   - `10.0s - 20.0s`: 40 pts (Slow)
-   - `> 20.0s` or Missed: 0 pts
-
-2. **Classification Accuracy (25%)**:
-   - Exact Match (e.g. Hostile Attack $\rightarrow$ Hostile Attack): 100 pts
-   - Right Category, Wrong Subtype: 60 pts
-   - Wrong Category (Hostile $\rightarrow$ Friendly / Bird): 0 pts + penalty
-
-3. **Engagement Decision Tree (30%)**:
-   - Evaluates target identity, perimeter interception threshold (500m), weapon selection suitability (RF Jammer for RF-linked, Kinetic for autonomous), and base alarm discipline.
-
-4. **Resource Efficiency (10%)**:
-   - Penalizes interceptor ammo wasted on non-hostile decoys/birds and jammer spamming against autonomous guidance.
-
-5. **Asset Health Remaining (10%)**:
-   - Remaining integrity of central defended asset at mission conclusion.
-
-*Penalty*: Heavy score deduction (-25 pts) for fratricide (engaging friendly UAVs).
+| Feature Module | Verification Status | Implementation Details |
+|---|---|---|
+| **5 Scripted Scenarios** | **REAL** | Dawn Recon, Convoy Kamikaze, Bird Confusion, Urban Swarm, and Friendly Fire Risk in `src/scenarios/scripted.ts`. |
+| **Mulberry32 PRNG Generator** | **REAL** | Deterministic seeded procedural generator; identical seeds produce identical trajectories, threat compositions, and weather conditions. |
+| **4-Sensor Suite** | **REAL** | Radar (rotating sweep), EO/IR Camera (30° optical FOV with slew controls), RF Spectrum Analyzer (frequency & signal strength), and Acoustic Array. |
+| **Environmental & Weather Overlays** | **REAL** | Day/Night lighting, Fog vignette, Rain streaks, Urban building shadow zones, and Mountain terrain ridge contours in `RadarCanvas.tsx`. |
+| **Degraded Sensor Mechanics** | **REAL** | Electronic warfare radar blackouts, false ghost blips (`TRK-G01`, `TRK-G02`), optical fog penalties, and RF bearing jitter. |
+| **Action & Countermeasure Engine** | **REAL** | Detect/Acknowledge (`D`), 6-Class Target Classification (`1-6`), RF Jamming (`J`), Soft-Kill Spoofing (`S`), Kinetic Interceptors (`H`), and Base Siren (`A`). |
+| **Scoring Rubric (0-100 Clamped)** | **REAL** | Detection (25%), Classification (25%), Engagement Decision Tree (30%), Resource Efficiency (10%), Asset Health (10%), with Fratricide penalty (-25 pts) and S/A/B/C/D/F grades. |
+| **Decision-Tree Evaluations** | **REAL** | Granular pass/fail nodes computed for every spawned track and inspectable in Debrief and AAR pages. |
+| **Adaptive Difficulty Engine** | **REAL** | Analyzes rolling trainee mistake profiles and automatically scales difficulty level (1-10) with tailored debrief explanations. |
+| **Dual AI Instructor** | **REAL** | Rule-based offline instructor with instant debrief coaching plus optional OpenAI/Gemini LLM API hook. |
+| **AAR Analytics & Replay** | **REAL** | Trend charts (Line, Radar, Bar), interactive timeline scrubbing with Ground Truth revealed, and one-click JSON/PDF export. |
+| **Unit Leaderboard & Readiness** | **REAL** | Platoon and squad performance filtering, unit readiness rating, operator qualification badges, and reset demo data. |
+| **Guided Tutorial & ROE Briefing** | **REAL** | 8-step interactive tutorial with UI spotlight, scenario-specific tactics, pre-mission ROE card, 3-2-1 countdown, and coaching practice mode. |
+| **3 Tactical Themes & Audio** | **REAL** | Tactical Command, Night Ops, and Desert Ops themes, offline synthesized Web Audio sound generator, and colorblind mode. |
 
 ---
 
-## Procedural Scenario Generation
+## Keyboard Shortcuts Cheat Sheet
 
-Powered by the **Mulberry32 PRNG**, the generator uses deterministic seeds to guarantee:
-- 100% reproducible mission conditions when sharing seed numbers among instructors.
-- Guaranteed solvability with balanced threat waves, decoy ratios, environment modifiers (Day/Night, Fog/Rain, Urban Shadowing), and sensor degradation.
-
----
-
-## Keyboard Shortcuts
-
-- `D`: Detect / Acknowledge Selected Track
-- `J`: Deploy RF Jammer
-- `S`: Deploy Soft-Kill GPS Spoofing
-- `H`: Fire Kinetic Interceptor (Hard-Kill)
-- `A`: Sound Base Alarm (Personnel Take Cover)
-- `1 - 6`: Quick Classify Target Type (1: Attack, 2: Recon, 3: Swarm, 4: Friendly, 5: Civilian, 6: Bird)
-- `SPACE`: Pause / Resume Simulation
-- `ESC`: Deselect Track
+| Key | Tactical Action | Description |
+|---|---|---|
+| `D` | **Detect / Acknowledge** | Acknowledge currently selected radar contact |
+| `1 - 6` | **Classify Target** | `1`: Attack, `2`: Recon, `3`: Swarm, `4`: Friendly, `5`: Civilian, `6`: Bird |
+| `J` | **Deploy RF Jammer** | Electronic countermeasure against RF-controlled drones (20s cooldown) |
+| `S` | **Deploy Soft-Kill** | GPS spoofing / navigation denial |
+| `H` | **Fire Kinetic Interceptor** | Hard-kill missile neutralization (8 interceptor inventory) |
+| `A` | **Base Alarm** | Sound siren for ground personnel to take cover |
+| `SPACE` | **Pause / Resume** | Toggle simulation clock |
+| `ESC` | **Deselect Track** | Clear current target selection |
 
 ---
 
-## Future Work & Roadmap
+## Known Limitations
 
-1. **WebXR / VR Mode**: Immersive 3D C-UAS command tower interface using Three.js / WebXR for VR headset training.
-2. **Multi-User LAN Training**: Instructor console allowing live red-teaming where an instructor manually pilot threat swarms against trainees over WebSockets/WebRTC.
-3. **Real Sensor Data Integration**: Direct feed ingest for ASTERIX Cat 048/062 radar protocols and RTSP thermal video streams for real-world operational hardware testing.
-4. **ML-Based Adaptive Opponent Behavior**: Reinforcement Learning (RL) trained drone swarm agents executing dynamic evasive maneuvers and multi-vector saturation tactics.
+1. **Synthetic Kinematic Data**: Drone flight physics and radar cross-sections are simulated via mathematical models rather than raw hardware radar I/Q data.
+2. **2D Top-Down Projection**: Radar display operates on a 2D Plan Position Indicator (PPI) scope with altitude estimates represented as text overlays rather than a 3D volumetric space.
+3. **Local Client-Side Storage**: Session histories, operator profiles, and leaderboard rankings persist via browser `localStorage` to ensure 100% offline autonomy for field-deployed laptops without internet connectivity.

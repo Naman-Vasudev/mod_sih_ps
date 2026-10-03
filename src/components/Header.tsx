@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import type { CurrentUser } from '../storage/storageService';
+import { soundFx } from '../utils/audio';
 import {
   Shield,
   Target,
@@ -10,6 +11,10 @@ import {
   User,
   Radio,
   Activity,
+  Palette,
+  Volume2,
+  VolumeX,
+  Eye,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -51,6 +56,49 @@ export const Header: React.FC<HeaderProps> = ({
   hasActiveSession = false,
 }) => {
   const [timeStr, setTimeStr] = useState(() => formatLocalTime());
+  const [currentTheme, setCurrentTheme] = useState<'tactical' | 'night-ops' | 'desert-ops'>(() => {
+    try {
+      const saved = localStorage.getItem('cuas_theme');
+      if (saved === 'night-ops' || saved === 'desert-ops' || saved === 'tactical') return saved;
+    } catch {}
+    return 'tactical';
+  });
+
+  const [isMuted, setIsMuted] = useState(() => soundFx.getMuted());
+  const [isColorblind, setIsColorblind] = useState(() => {
+    try {
+      return localStorage.getItem('cuas_colorblind') === 'true';
+    } catch {}
+    return false;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    try {
+      localStorage.setItem('cuas_theme', currentTheme);
+    } catch {}
+  }, [currentTheme]);
+
+  const handleToggleTheme = () => {
+    const nextTheme = currentTheme === 'tactical' ? 'night-ops' : currentTheme === 'night-ops' ? 'desert-ops' : 'tactical';
+    setCurrentTheme(nextTheme);
+    soundFx.playClick();
+  };
+
+  const handleToggleMute = () => {
+    const newMuted = soundFx.toggleMute();
+    setIsMuted(newMuted);
+    if (!newMuted) soundFx.playClick();
+  };
+
+  const handleToggleColorblind = () => {
+    const next = !isColorblind;
+    setIsColorblind(next);
+    try {
+      localStorage.setItem('cuas_colorblind', String(next));
+    } catch {}
+    soundFx.playClick();
+  };
 
   useEffect(() => {
     const clock = window.setInterval(() => setTimeStr(formatLocalTime()), 30_000);
@@ -159,6 +207,39 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
         </div>
+
+        {/* Theme Switcher Button */}
+        <button
+          onClick={handleToggleTheme}
+          title={`Active Theme: ${currentTheme.toUpperCase()} (Click to toggle)`}
+          className="btn-tactical flex items-center space-x-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
+          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.2)' }}
+        >
+          <Palette style={{ width: 14, height: 14 }} className="text-amber-400" />
+          <span className="hidden xl:inline text-[10px] text-zinc-300 uppercase">
+            {currentTheme === 'tactical' ? 'TACTICAL' : currentTheme === 'night-ops' ? 'NIGHT OPS' : 'DESERT OPS'}
+          </span>
+        </button>
+
+        {/* Audio Mute Toggle */}
+        <button
+          onClick={handleToggleMute}
+          title={isMuted ? 'Tactical Audio: MUTED (Click to unmute)' : 'Tactical Audio: ACTIVE (Click to mute)'}
+          className={`btn-tactical p-1.5 rounded-lg transition-colors ${isMuted ? 'text-zinc-600' : 'text-emerald-400'}`}
+          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.15)' }}
+        >
+          {isMuted ? <VolumeX style={{ width: 15, height: 15 }} /> : <Volume2 style={{ width: 15, height: 15 }} />}
+        </button>
+
+        {/* Colorblind Mode Toggle */}
+        <button
+          onClick={handleToggleColorblind}
+          title={isColorblind ? 'Colorblind Mode: ACTIVE (Shapes + Colors)' : 'Colorblind Mode: OFF (Click to toggle)'}
+          className={`btn-tactical p-1.5 rounded-lg transition-colors ${isColorblind ? 'text-cyan-300 border-cyan-500' : 'text-zinc-500 hover:text-cyan-400'}`}
+          style={{ background: 'rgba(4,12,8,0.8)', border: isColorblind ? '1px solid rgba(6,182,212,0.6)' : '1px solid rgba(16,185,129,0.12)' }}
+        >
+          <Eye style={{ width: 15, height: 15 }} />
+        </button>
 
         <button
           onClick={onOpenHotkeys}
