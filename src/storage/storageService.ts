@@ -10,7 +10,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'cuas_app_settings',
 };
 
-const CURRENT_SCHEMA_VERSION = '2.1';
+const CURRENT_SCHEMA_VERSION = '3.0'; // Bumped for Indian Armed Forces roster migration
 
 export interface CurrentUser {
   name: string;
@@ -19,49 +19,58 @@ export interface CurrentUser {
 
 export const INITIAL_TRAINEES: TraineeProfile[] = [
   {
-    name: 'SGT. Vance Miller',
-    unit: 'Alpha Squad 1st Platoon',
+    name: 'Sub. Vikram Singh',
+    unit: '48 Air Defence Regiment',
     sessionsCount: 4,
-    avgScore: 89,
+    avgScore: 91,
     topScore: 96,
-    skillProfile: { detection: 92, classification: 88, engagement: 90, efficiency: 86 },
+    skillProfile: { detection: 94, classification: 90, engagement: 92, efficiency: 88 },
     currentDifficulty: 7,
   },
   {
-    name: 'CPL. Maya Lin',
-    unit: 'Alpha Squad 1st Platoon',
-    sessionsCount: 3,
-    avgScore: 82,
-    topScore: 88,
-    skillProfile: { detection: 85, classification: 84, engagement: 80, efficiency: 79 },
-    currentDifficulty: 5,
-  },
-  {
-    name: 'SPC. David Ross',
-    unit: 'Alpha Squad 1st Platoon',
-    sessionsCount: 3,
-    avgScore: 68,
-    topScore: 74,
-    skillProfile: { detection: 70, classification: 62, engagement: 68, efficiency: 72 },
-    currentDifficulty: 4,
-  },
-  {
-    name: 'LT. Elena Rostova',
-    unit: 'Bravo Battery 2nd Platoon',
-    sessionsCount: 4,
-    avgScore: 92,
+    name: 'Maj. Ananya Sharma',
+    unit: '127 AD Missile Regiment',
+    sessionsCount: 5,
+    avgScore: 94,
     topScore: 98,
-    skillProfile: { detection: 95, classification: 94, engagement: 90, efficiency: 89 },
+    skillProfile: { detection: 96, classification: 95, engagement: 93, efficiency: 92 },
     currentDifficulty: 8,
   },
   {
-    name: 'PFC. Marcus Thorne',
-    unit: 'Bravo Battery 2nd Platoon',
+    name: 'Capt. Rajesh Nair',
+    unit: '15 Forward AD Battery',
     sessionsCount: 3,
-    avgScore: 54,
-    topScore: 62,
-    skillProfile: { detection: 58, classification: 50, engagement: 52, efficiency: 56 },
-    currentDifficulty: 3,
+    avgScore: 82,
+    topScore: 88,
+    skillProfile: { detection: 85, classification: 83, engagement: 81, efficiency: 79 },
+    currentDifficulty: 5,
+  },
+  {
+    name: 'Hav. Gurpreet Sandhu',
+    unit: '48 Air Defence Regiment',
+    sessionsCount: 4,
+    avgScore: 88,
+    topScore: 92,
+    skillProfile: { detection: 90, classification: 86, engagement: 89, efficiency: 87 },
+    currentDifficulty: 6,
+  },
+  {
+    name: 'Nk. Amit Kumar',
+    unit: '15 Forward AD Battery',
+    sessionsCount: 3,
+    avgScore: 68,
+    topScore: 74,
+    skillProfile: { detection: 72, classification: 64, engagement: 68, efficiency: 68 },
+    currentDifficulty: 4,
+  },
+  {
+    name: 'Lt. Cdr. Priya Venkatesh',
+    unit: 'Western Fleet AD Wing',
+    sessionsCount: 3,
+    avgScore: 76,
+    topScore: 84,
+    skillProfile: { detection: 80, classification: 78, engagement: 74, efficiency: 72 },
+    currentDifficulty: 5,
   },
 ];
 
@@ -70,16 +79,15 @@ export function generateSeedSessions(): SessionResult[] {
   const day = 24 * 60 * 60 * 1000;
 
   const sampleConfigs = [
-    { name: 'LT. Elena Rostova', unit: 'Bravo Battery 2nd Platoon', scenario: 'Urban Swarm Raid', seed: 404, diff: 7, score: 98, grade: 'S' as const, det: 98, cls: 96, eng: 98, eff: 94, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 1 },
-    { name: 'SGT. Vance Miller', unit: 'Alpha Squad 1st Platoon', scenario: 'Friendly Fire Risk', seed: 505, diff: 8, score: 94, grade: 'S' as const, det: 95, cls: 92, eng: 94, eff: 90, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 2 },
-    { name: 'SGT. Vance Miller', unit: 'Alpha Squad 1st Platoon', scenario: 'Urban Swarm Raid', seed: 404, diff: 7, score: 88, grade: 'A' as const, det: 90, cls: 86, eng: 88, eff: 85, assetH: 88, frats: 0, coll: 0, missed: 0, daysAgo: 3 },
-    { name: 'CPL. Maya Lin', unit: 'Alpha Squad 1st Platoon', scenario: 'Bird & Decoy Confusion', seed: 303, diff: 5, score: 86, grade: 'A' as const, det: 88, cls: 84, eng: 86, eff: 82, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 2 },
-    { name: 'LT. Elena Rostova', unit: 'Bravo Battery 2nd Platoon', scenario: 'Convoy Kamikaze', seed: 202, diff: 3, score: 92, grade: 'S' as const, det: 94, cls: 92, eng: 92, eff: 90, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 4 },
-    { name: 'CPL. Maya Lin', unit: 'Alpha Squad 1st Platoon', scenario: 'Dawn Recon (Tutorial)', seed: 101, diff: 1, score: 78, grade: 'B' as const, det: 80, cls: 76, eng: 78, eff: 75, assetH: 75, frats: 0, coll: 1, missed: 0, daysAgo: 5 },
-    { name: 'SPC. David Ross', unit: 'Alpha Squad 1st Platoon', scenario: 'Bird & Decoy Confusion', seed: 303, diff: 5, score: 72, grade: 'B' as const, det: 75, cls: 65, eng: 72, eff: 70, assetH: 75, frats: 0, coll: 1, missed: 1, daysAgo: 3 },
-    { name: 'SPC. David Ross', unit: 'Alpha Squad 1st Platoon', scenario: 'Convoy Kamikaze', seed: 202, diff: 3, score: 64, grade: 'C' as const, det: 68, cls: 60, eng: 62, eff: 65, assetH: 50, frats: 0, coll: 0, missed: 1, daysAgo: 6 },
-    { name: 'PFC. Marcus Thorne', unit: 'Bravo Battery 2nd Platoon', scenario: 'Friendly Fire Risk', seed: 505, diff: 8, score: 48, grade: 'D' as const, det: 55, cls: 42, eng: 45, eff: 50, assetH: 50, frats: 1, coll: 1, missed: 2, daysAgo: 2 },
-    { name: 'PFC. Marcus Thorne', unit: 'Bravo Battery 2nd Platoon', scenario: 'Dawn Recon (Tutorial)', seed: 101, diff: 1, score: 60, grade: 'C' as const, det: 62, cls: 58, eng: 58, eff: 62, assetH: 75, frats: 0, coll: 0, missed: 1, daysAgo: 5 },
+    { name: 'Maj. Ananya Sharma', unit: '127 AD Missile Regiment', scenario: 'Urban Swarm Raid', seed: 404, diff: 7, score: 98, grade: 'S' as const, det: 98, cls: 96, eng: 98, eff: 94, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 1 },
+    { name: 'Sub. Vikram Singh', unit: '48 Air Defence Regiment', scenario: 'Friendly Fire Risk', seed: 505, diff: 8, score: 94, grade: 'S' as const, det: 95, cls: 92, eng: 94, eff: 90, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 2 },
+    { name: 'Sub. Vikram Singh', unit: '48 Air Defence Regiment', scenario: 'Urban Swarm Raid', seed: 404, diff: 7, score: 88, grade: 'A' as const, det: 90, cls: 86, eng: 88, eff: 85, assetH: 88, frats: 0, coll: 0, missed: 0, daysAgo: 3 },
+    { name: 'Hav. Gurpreet Sandhu', unit: '48 Air Defence Regiment', scenario: 'Convoy Kamikaze', seed: 202, diff: 3, score: 92, grade: 'S' as const, det: 94, cls: 92, eng: 92, eff: 90, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 4 },
+    { name: 'Capt. Rajesh Nair', unit: '15 Forward AD Battery', scenario: 'Bird & Decoy Confusion', seed: 303, diff: 5, score: 86, grade: 'A' as const, det: 88, cls: 84, eng: 86, eff: 82, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 2 },
+    { name: 'Capt. Rajesh Nair', unit: '15 Forward AD Battery', scenario: 'Dawn Recon (Tutorial)', seed: 101, diff: 1, score: 78, grade: 'B' as const, det: 80, cls: 76, eng: 78, eff: 75, assetH: 75, frats: 0, coll: 1, missed: 0, daysAgo: 5 },
+    { name: 'Nk. Amit Kumar', unit: '15 Forward AD Battery', scenario: 'Bird & Decoy Confusion', seed: 303, diff: 5, score: 72, grade: 'B' as const, det: 75, cls: 65, eng: 72, eff: 70, assetH: 75, frats: 0, coll: 1, missed: 1, daysAgo: 3 },
+    { name: 'Nk. Amit Kumar', unit: '15 Forward AD Battery', scenario: 'Convoy Kamikaze', seed: 202, diff: 3, score: 64, grade: 'C' as const, det: 68, cls: 60, eng: 62, eff: 65, assetH: 50, frats: 0, coll: 0, missed: 1, daysAgo: 6 },
+    { name: 'Lt. Cdr. Priya Venkatesh', unit: 'Western Fleet AD Wing', scenario: 'Dawn Recon (Tutorial)', seed: 101, diff: 1, score: 84, grade: 'A' as const, det: 86, cls: 84, eng: 82, eff: 84, assetH: 100, frats: 0, coll: 0, missed: 0, daysAgo: 4 },
   ];
 
   return sampleConfigs.map((cfg, index) => {
@@ -215,6 +223,7 @@ export const storageService = {
       if (ver !== CURRENT_SCHEMA_VERSION) {
         localStorage.removeItem(STORAGE_KEYS.SESSIONS);
         localStorage.removeItem(STORAGE_KEYS.PROFILES);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
         localStorage.setItem(STORAGE_KEYS.SCHEMA_VERSION, CURRENT_SCHEMA_VERSION);
       }
     } catch {
@@ -235,7 +244,7 @@ export const storageService = {
     } catch {
       // Storage error
     }
-    return { name: 'SGT. Vance Miller', unit: 'Alpha Squad 1st Platoon' };
+    return { name: 'Sub. Vikram Singh', unit: '48 Air Defence Regiment' };
   },
 
   setCurrentUser(user: CurrentUser): void {
@@ -257,28 +266,26 @@ export const storageService = {
         }
       }
     } catch {
-      // Corrupted storage
+      // Storage error
     }
     const seed = generateSeedSessions();
-    try {
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(seed));
-    } catch {
-      // Ignore
-    }
+    this.saveSessions(seed);
     return seed;
+  },
+
+  saveSessions(sessions: SessionResult[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    } catch {
+      // Quota exceeded
+    }
   },
 
   saveSession(session: SessionResult): void {
     const sessions = this.getSessions();
     sessions.unshift(session);
-    try {
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions.slice(0, 50)));
-    } catch {
-      // Quota exceeded
-    }
-
-    // Update or create trainee profile
-    this.updateTraineeProfile(session);
+    this.saveSessions(sessions);
+    this.updateProfileAfterSession(session);
   },
 
   getProfiles(): TraineeProfile[] {
@@ -292,17 +299,21 @@ export const storageService = {
         }
       }
     } catch {
-      // Fallback
+      // Storage error
     }
-    try {
-      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(INITIAL_TRAINEES));
-    } catch {
-      // Ignore
-    }
+    this.saveProfiles(INITIAL_TRAINEES);
     return INITIAL_TRAINEES;
   },
 
-  updateTraineeProfile(session: SessionResult): void {
+  saveProfiles(profiles: TraineeProfile[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
+    } catch {
+      // Quota exceeded
+    }
+  },
+
+  updateProfileAfterSession(session: SessionResult): void {
     const profiles = this.getProfiles();
     let profile = profiles.find((p) => p.name === session.traineeName);
 
@@ -311,39 +322,71 @@ export const storageService = {
         name: session.traineeName,
         unit: session.unitName,
         sessionsCount: 0,
-        avgScore: session.finalScore,
-        topScore: session.finalScore,
-        skillProfile: { ...session.subScores },
+        avgScore: 0,
+        topScore: 0,
+        skillProfile: { detection: 0, classification: 0, engagement: 0, efficiency: 0 },
         currentDifficulty: session.difficulty,
       };
       profiles.push(profile);
     }
 
-    profile.sessionsCount += 1;
+    const prevCount = profile.sessionsCount;
+    const newCount = prevCount + 1;
+    profile.sessionsCount = newCount;
+    profile.avgScore = Math.round((profile.avgScore * prevCount + session.finalScore) / newCount);
     profile.topScore = Math.max(profile.topScore, session.finalScore);
 
-    // Compute rolling averages
-    profile.avgScore = Math.round((profile.avgScore * (profile.sessionsCount - 1) + session.finalScore) / profile.sessionsCount);
-    profile.skillProfile.detection = Math.round((profile.skillProfile.detection * (profile.sessionsCount - 1) + session.subScores.detection) / profile.sessionsCount);
-    profile.skillProfile.classification = Math.round((profile.skillProfile.classification * (profile.sessionsCount - 1) + session.subScores.classification) / profile.sessionsCount);
-    profile.skillProfile.engagement = Math.round((profile.skillProfile.engagement * (profile.sessionsCount - 1) + session.subScores.engagement) / profile.sessionsCount);
-    profile.skillProfile.efficiency = Math.round((profile.skillProfile.efficiency * (profile.sessionsCount - 1) + session.subScores.efficiency) / profile.sessionsCount);
+    profile.skillProfile.detection = Math.round(
+      (profile.skillProfile.detection * prevCount + session.subScores.detection) / newCount
+    );
+    profile.skillProfile.classification = Math.round(
+      (profile.skillProfile.classification * prevCount + session.subScores.classification) / newCount
+    );
+    profile.skillProfile.engagement = Math.round(
+      (profile.skillProfile.engagement * prevCount + session.subScores.engagement) / newCount
+    );
+    profile.skillProfile.efficiency = Math.round(
+      (profile.skillProfile.efficiency * prevCount + session.subScores.efficiency) / newCount
+    );
 
-    localStorage.setItem(STORAGE_KEYS.PROFILES, JSON.stringify(profiles));
-  },
+    if (session.finalScore >= 85 && profile.currentDifficulty < 10) {
+      profile.currentDifficulty = Math.min(10, profile.currentDifficulty + 1);
+    } else if (session.finalScore < 50 && profile.currentDifficulty > 1) {
+      profile.currentDifficulty = Math.max(1, profile.currentDifficulty - 1);
+    }
 
-  resetDemoData(): void {
-    localStorage.removeItem(STORAGE_KEYS.SESSIONS);
-    localStorage.removeItem(STORAGE_KEYS.PROFILES);
-    this.getSessions();
-    this.getProfiles();
+    this.saveProfiles(profiles);
   },
 
   getLLMApiKey(): string {
-    return localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+    try {
+      return localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+    } catch {
+      return '';
+    }
   },
 
   setLLMApiKey(key: string): void {
-    localStorage.setItem(STORAGE_KEYS.API_KEY, key);
+    try {
+      localStorage.setItem(STORAGE_KEYS.API_KEY, key);
+    } catch {
+      // Quota exceeded
+    }
+  },
+
+  resetAllData(): void {
+    try {
+      localStorage.removeItem(STORAGE_KEYS.SESSIONS);
+      localStorage.removeItem(STORAGE_KEYS.PROFILES);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      localStorage.removeItem(STORAGE_KEYS.SCHEMA_VERSION);
+    } catch {
+      // Storage unavailable
+    }
+    this._checkSchemaMigration();
+  },
+
+  resetDemoData(): void {
+    this.resetAllData();
   },
 };

@@ -83,8 +83,8 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
       };
     };
 
-    // Clear canvas
-    ctx.fillStyle = timeOfDay === 'night' ? '#040906' : '#07120b';
+    // Clear canvas with smooth deep tactical slate
+    ctx.fillStyle = timeOfDay === 'night' ? '#070d1a' : '#0b1326';
     ctx.fillRect(0, 0, width, height);
 
     // 1. Draw Terrain features
@@ -376,7 +376,7 @@ export const RadarCanvas: React.FC<RadarCanvasProps> = ({
   }, [tracks, entities, sensorState, selectedTrackId, terrain, timeOfDay, weather, isReplayMode, assetHealth, width, height]);
 
   return (
-    <div className="radar-crt relative inline-block border-2 border-emerald-900/60 rounded-lg bg-black shadow-2xl overflow-hidden">
+    <div className="relative inline-block border border-slate-700/80 rounded-2xl bg-slate-950 shadow-2xl overflow-hidden ring-1 ring-emerald-500/20">
       <canvas
         ref={canvasRef}
         width={width}

@@ -33,13 +33,13 @@ const NavBtn: React.FC<{
   label: string;
   activeClass?: string;
   pulse?: boolean;
-}> = ({ active, onClick, icon, label, activeClass = 'bg-emerald-950/90 text-emerald-300 border-emerald-600/60', pulse = false }) => (
+}> = ({ active, onClick, icon, label, activeClass = 'bg-emerald-600 text-white font-bold border-emerald-400', pulse = false }) => (
   <button
     onClick={onClick}
-    className={`btn-tactical flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-bold tracking-wide transition-all duration-200 border ${
+    className={`btn-tactical flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wider transition-all duration-150 border ${
       active
-        ? `${activeClass} shadow-sm ${pulse ? 'animate-pulse' : ''}`
-        : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/80 border-transparent hover:border-zinc-700/40'
+        ? `${activeClass} shadow-md ${pulse ? 'animate-pulse' : ''}`
+        : 'text-slate-300 hover:text-white hover:bg-slate-800/90 border-transparent hover:border-slate-700'
     }`}
   >
     {icon}
@@ -107,116 +107,109 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header
-      className="bg-[#071117]/95 border-b border-emerald-900/50 px-3 sm:px-4 py-1.5 flex flex-wrap items-center justify-between gap-2 font-mono select-none"
-      style={{ minHeight: '60px', borderBottom: '1px solid rgba(16,185,129,0.25)' }}
+      className="bg-slate-950/95 border-b border-slate-800 px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-3 font-sans select-none"
+      style={{ minHeight: '60px' }}
     >
       {/* Brand */}
       <div
         onClick={() => onNavigate('home')}
-        className="flex items-center space-x-3 cursor-pointer group py-2 min-w-0"
+        className="flex items-center space-x-3 cursor-pointer group py-1 min-w-0"
       >
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center relative"
-          style={{ background: 'linear-gradient(135deg, #064e3b, #022c22)', border: '1px solid rgba(16,185,129,0.4)' }}
+          className="w-8 h-8 rounded-lg flex items-center justify-center relative bg-emerald-950 border border-emerald-500/40"
         >
-          <Shield className="w-4.5 h-4.5 text-emerald-400" style={{ width: 18, height: 18 }} />
+          <Shield className="text-emerald-400" style={{ width: 18, height: 18 }} />
           <span
             className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400"
             style={{ animation: 'blink 2s infinite' }}
           />
         </div>
-        <div className="leading-none">
-          <div className="text-[12px] sm:text-[13px] font-extrabold tracking-[0.12em] text-emerald-300 group-hover:text-emerald-200 transition-colors truncate" style={{ fontFamily: 'Rajdhani, Share Tech Mono, monospace' }}>
+        <div className="leading-tight">
+          <div className="text-sm font-bold tracking-wide text-white group-hover:text-emerald-300 transition-colors truncate">
             GHOST PROTOCOL C-UAS
           </div>
-          <div className="text-[9px] text-emerald-700 tracking-widest">SIH-26247 • THREAT SIMULATION TRAINER</div>
+          <div className="text-[10px] font-mono text-slate-400 tracking-wider">SIH-26247 • THREAT SIMULATION TRAINER</div>
         </div>
       </div>
 
       {/* Live Status Ticker */}
-      <div className="hidden lg:flex items-center space-x-4 text-[9px] text-zinc-600 tracking-widest">
+      <div className="hidden lg:flex items-center space-x-4 text-[11px] font-mono text-slate-400 tracking-wide">
         <div className="flex items-center space-x-1.5">
           <span className="status-dot online" />
-          <span>SIMULATION ENGINE: ONLINE</span>
+          <span className="text-slate-300">ENGINE: ONLINE</span>
         </div>
-        <div className="h-3 w-px bg-zinc-800" />
+        <div className="h-3 w-px bg-slate-800" />
         <div className="flex items-center space-x-1.5">
-          <Activity className="w-3 h-3 text-emerald-800" />
-          <span>LOCAL ZULU: {timeStr}</span>
+          <Activity className="w-3.5 h-3.5 text-emerald-400" />
+          <span>ZULU: {timeStr}</span>
         </div>
-        <div className="h-3 w-px bg-zinc-800" />
+        <div className="h-3 w-px bg-slate-800" />
         <div className="flex items-center space-x-1.5">
           <span className="status-dot standby" />
-          <span>OFFLINE MODE ACTIVE</span>
+          <span>OFFLINE READY</span>
         </div>
       </div>
 
       {/* Nav Tabs */}
-      <nav className="order-3 md:order-none w-full md:w-auto flex items-center space-x-0.5 p-0.5 rounded-lg text-xs overflow-x-auto" style={{ background: 'rgba(4,12,8,0.9)', border: '1px solid rgba(16,185,129,0.1)' }}>
+      <nav className="order-3 md:order-none w-full md:w-auto flex items-center space-x-1 p-1 rounded-lg text-xs bg-slate-900 border border-slate-800 overflow-x-auto">
         <NavBtn
           active={currentScreen === 'home'}
           onClick={() => onNavigate('home')}
-          icon={<User style={{ width: 13, height: 13 }} />}
+          icon={<User style={{ width: 14, height: 14 }} />}
           label="PROFILE"
         />
         <NavBtn
           active={currentScreen === 'scenarios'}
           onClick={() => onNavigate('scenarios')}
-          icon={<Target style={{ width: 13, height: 13 }} />}
+          icon={<Target style={{ width: 14, height: 14 }} />}
           label="MISSIONS"
         />
         {hasActiveSession && (
           <NavBtn
             active={currentScreen === 'simulator'}
             onClick={() => onNavigate('simulator')}
-            icon={<Radio style={{ width: 13, height: 13 }} />}
+            icon={<Radio style={{ width: 14, height: 14 }} />}
             label="LIVE SIM"
-            activeClass="bg-red-950/80 text-red-300 border-red-700/50"
+            activeClass="bg-red-600 text-white font-bold border-red-500"
             pulse={true}
           />
         )}
         <NavBtn
           active={currentScreen === 'aar'}
           onClick={() => onNavigate('aar')}
-          icon={<BarChart3 style={{ width: 13, height: 13 }} />}
+          icon={<BarChart3 style={{ width: 14, height: 14 }} />}
           label="AAR"
         />
         <NavBtn
           active={currentScreen === 'leaderboard'}
           onClick={() => onNavigate('leaderboard')}
-          icon={<Trophy style={{ width: 13, height: 13 }} />}
+          icon={<Trophy style={{ width: 14, height: 14 }} />}
           label="RANKINGS"
         />
       </nav>
 
       {/* Right Controls */}
-      <div className="flex items-center space-x-2 text-xs py-2.5">
-        <div
-          className="hidden md:flex"
-        >
-        <div
-          className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg"
-          style={{ background: 'rgba(6,182,212,0.06)', border: '1px solid rgba(6,182,212,0.15)' }}
-        >
-          <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-700/50 flex items-center justify-center">
-            <User className="w-3 h-3 text-cyan-400" />
+      <div className="flex items-center space-x-2 text-xs py-1">
+        <div className="hidden md:flex">
+          <div className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800">
+            <div className="w-6 h-6 rounded-full bg-cyan-950 border border-cyan-500/40 flex items-center justify-center">
+              <User className="w-3.5 h-3.5 text-cyan-300" />
+            </div>
+            <div className="leading-tight">
+              <div className="font-bold text-white text-xs">{currentUser.name}</div>
+              <div className="text-[10px] text-slate-400">{currentUser.unit}</div>
+            </div>
           </div>
-          <div className="leading-none">
-            <div className="font-bold text-zinc-100 text-[11px]">{currentUser.name}</div>
-            <div className="text-[9px] text-zinc-500">{currentUser.unit}</div>
-          </div>
-        </div>
         </div>
 
         {/* Theme Switcher Button */}
         <button
           onClick={handleToggleTheme}
           title={`Active Theme: ${currentTheme.toUpperCase()} (Click to toggle)`}
-          className="btn-tactical flex items-center space-x-1 px-2 py-1.5 rounded-lg text-xs font-bold transition-colors"
-          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.2)' }}
+          className="btn-tactical flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 transition-colors"
         >
           <Palette style={{ width: 14, height: 14 }} className="text-amber-400" />
-          <span className="hidden xl:inline text-[10px] text-zinc-300 uppercase">
+          <span className="hidden xl:inline text-[11px] font-mono uppercase text-slate-200">
             {currentTheme === 'tactical' ? 'TACTICAL' : currentTheme === 'night-ops' ? 'NIGHT OPS' : 'DESERT OPS'}
           </span>
         </button>
@@ -225,8 +218,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={handleToggleMute}
           title={isMuted ? 'Tactical Audio: MUTED (Click to unmute)' : 'Tactical Audio: ACTIVE (Click to mute)'}
-          className={`btn-tactical p-1.5 rounded-lg transition-colors ${isMuted ? 'text-zinc-600' : 'text-emerald-400'}`}
-          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.15)' }}
+          className={`btn-tactical p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 transition-colors ${isMuted ? 'text-slate-500' : 'text-emerald-400'}`}
         >
           {isMuted ? <VolumeX style={{ width: 15, height: 15 }} /> : <Volume2 style={{ width: 15, height: 15 }} />}
         </button>
@@ -235,8 +227,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={handleToggleColorblind}
           title={isColorblind ? 'Colorblind Mode: ACTIVE (Shapes + Colors)' : 'Colorblind Mode: OFF (Click to toggle)'}
-          className={`btn-tactical p-1.5 rounded-lg transition-colors ${isColorblind ? 'text-cyan-300 border-cyan-500' : 'text-zinc-500 hover:text-cyan-400'}`}
-          style={{ background: 'rgba(4,12,8,0.8)', border: isColorblind ? '1px solid rgba(6,182,212,0.6)' : '1px solid rgba(16,185,129,0.12)' }}
+          className={`btn-tactical p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border transition-colors ${isColorblind ? 'text-cyan-300 border-cyan-500' : 'text-slate-400 border-slate-700 hover:text-white'}`}
         >
           <Eye style={{ width: 15, height: 15 }} />
         </button>
@@ -244,8 +235,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onOpenHotkeys}
           title="Keyboard Shortcuts [?]"
-          className="btn-tactical p-1.5 rounded-lg text-zinc-500 hover:text-emerald-400 transition-colors"
-          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.12)' }}
+          className="btn-tactical p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-colors"
         >
           <HelpCircle style={{ width: 15, height: 15 }} />
         </button>
@@ -253,8 +243,7 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           onClick={onResetData}
           title="Reset Demo Data"
-          className="btn-tactical p-1.5 rounded-lg text-zinc-600 hover:text-red-400 transition-colors"
-          style={{ background: 'rgba(4,12,8,0.8)', border: '1px solid rgba(16,185,129,0.12)' }}
+          className="btn-tactical p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-red-400 border border-slate-700 transition-colors"
         >
           <RotateCcw style={{ width: 15, height: 15 }} />
         </button>

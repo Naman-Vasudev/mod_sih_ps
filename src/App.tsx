@@ -71,7 +71,7 @@ export function App() {
   };
 
   return (
-    <div className="app-shell min-h-screen text-emerald-400 flex flex-col scanlines">
+    <div className="app-shell min-h-screen text-slate-100 flex flex-col">
       <Header
         currentScreen={currentScreen}
         onNavigate={(screen) => setCurrentScreen(screen)}
