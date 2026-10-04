@@ -1,5 +1,10 @@
 import type { SessionResult, TraineeProfile } from '../types';
 import { generateFeedback } from '../ai/instructor';
+import {
+  type SkillModelState,
+  buildSkillModelFromHistory,
+  updateSkillModel,
+} from '../ai/skillModel';
 
 const STORAGE_KEYS = {
   SCHEMA_VERSION: 'cuas_schema_version',
@@ -8,6 +13,7 @@ const STORAGE_KEYS = {
   PROFILES: 'cuas_trainee_profiles',
   API_KEY: 'cuas_llm_api_key',
   SETTINGS: 'cuas_app_settings',
+  SKILL_MODEL: 'cuas_skill_model',
 };
 
 const CURRENT_SCHEMA_VERSION = '3.0'; // Bumped for Indian Armed Forces roster migration
@@ -349,6 +355,19 @@ export const storageService = {
       (profile.skillProfile.efficiency * prevCount + session.subScores.efficiency) / newCount
     );
 
+    // --- BKT skill model update (enhances the simple rolling average above) ---
+    const skillState = this.getSkillModel(session.traineeName);
+    const updatedSkillState = updateSkillModel(skillState, session);
+    this.saveSkillModel(session.traineeName, updatedSkillState);
+
+    // Expose BKT mastery probabilities as the profile skill percentages
+    profile.skillProfile = {
+      detection: Math.round(updatedSkillState.skills.detection.pMastery * 100),
+      classification: Math.round(updatedSkillState.skills.classification.pMastery * 100),
+      engagement: Math.round(updatedSkillState.skills.engagement.pMastery * 100),
+      efficiency: Math.round(updatedSkillState.skills.efficiency.pMastery * 100),
+    };
+
     if (session.finalScore >= 85 && profile.currentDifficulty < 10) {
       profile.currentDifficulty = Math.min(10, profile.currentDifficulty + 1);
     } else if (session.finalScore < 50 && profile.currentDifficulty > 1) {
@@ -380,6 +399,7 @@ export const storageService = {
       localStorage.removeItem(STORAGE_KEYS.PROFILES);
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
       localStorage.removeItem(STORAGE_KEYS.SCHEMA_VERSION);
+      localStorage.removeItem(STORAGE_KEYS.SKILL_MODEL);
     } catch {
       // Storage unavailable
     }
@@ -388,5 +408,31 @@ export const storageService = {
 
   resetDemoData(): void {
     this.resetAllData();
+  },
+
+  /**
+   * Returns the BKT skill model for a specific trainee.
+   * If no model exists, build one from their session history.
+   */
+  getSkillModel(traineeName: string): SkillModelState {
+    try {
+      const raw = localStorage.getItem(`${STORAGE_KEYS.SKILL_MODEL}_${traineeName}`);
+      if (raw) return JSON.parse(raw) as SkillModelState;
+    } catch (_) {}
+
+    // Cold start: reconstruct from history
+    const sessions = this.getSessions().filter((s) => s.traineeName === traineeName);
+    const state = buildSkillModelFromHistory(sessions);
+    this.saveSkillModel(traineeName, state);
+    return state;
+  },
+
+  saveSkillModel(traineeName: string, state: SkillModelState): void {
+    try {
+      localStorage.setItem(
+        `${STORAGE_KEYS.SKILL_MODEL}_${traineeName}`,
+        JSON.stringify(state)
+      );
+    } catch (_) {}
   },
 };

@@ -15,7 +15,15 @@ import {
   Eye,
   Volume2,
   Sliders,
+  Brain,
 } from 'lucide-react';
+import { useMemo } from 'react';
+import {
+  classifyAllTracks,
+  formatPredictionHint,
+  predictionColor,
+  type ClassifierPrediction,
+} from '../ai/threatClassifier';
 
 interface HUDPanelProps {
   assetHealth: number;
@@ -60,6 +68,13 @@ export const HUDPanel: React.FC<HUDPanelProps> = ({
 }) => {
   const selectedTrack = selectedTrackId ? tracks.get(selectedTrackId) : null;
   const eventsEndRef = useRef<HTMLDivElement | null>(null);
+
+  // AI threat classifier — runs on every render (tracks map changes each tick)
+  const aiPredictions = useMemo(
+    () => classifyAllTracks(tracks),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tracks.size, simTime]
+  );
 
   // Auto-scroll event log to latest entry
   useEffect(() => {
@@ -256,6 +271,23 @@ export const HUDPanel: React.FC<HUDPanelProps> = ({
 
                     <span className="text-slate-400">IFF: {track.iffDisplay}</span>
                   </div>
+
+                  {/* AI Classifier badge */}
+                  {(() => {
+                    const pred: ClassifierPrediction | undefined = aiPredictions.get(track.trackId);
+                    if (!pred || !pred.shouldDisplayHint) return null;
+                    const hint = formatPredictionHint(pred);
+                    const color = predictionColor(pred);
+                    return (
+                      <div
+                        className="mt-1 flex items-center space-x-1 text-[10px] font-bold"
+                        style={{ color }}
+                      >
+                        <Brain className="w-2.5 h-2.5" />
+                        <span>{hint}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -285,6 +317,67 @@ export const HUDPanel: React.FC<HUDPanelProps> = ({
                   <span>SLEW CAMERA TO {Math.round(selectedTrack.estimatedBearing)}°</span>
                 </button>
               </div>
+
+              {/* AI Classifier full panel for selected track */}
+              {(() => {
+                const pred: ClassifierPrediction | undefined = aiPredictions.get(selectedTrack.trackId);
+                if (!pred) return null;
+                const topLabel = pred.label.replace(/_/g, ' ').toUpperCase();
+                const ALL_LABELS = [
+                  'hostile_attack', 'hostile_recon', 'hostile_swarm',
+                  'friendly', 'civilian', 'bird'
+                ] as const;
+                return (
+                  <div className="p-3 bg-slate-950 rounded-xl border border-purple-900/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1.5 text-xs font-bold text-purple-300">
+                        <Brain className="w-3.5 h-3.5" />
+                        <span>AI THREAT CLASSIFIER</span>
+                        <span className="text-slate-500 font-normal text-[10px]">(Random Forest · 10 trees)</span>
+                      </div>
+                      <span
+                        className="text-xs font-bold px-2 py-0.5 rounded"
+                        style={{ color: predictionColor(pred), background: 'rgba(0,0,0,0.4)' }}
+                      >
+                        {topLabel} {Math.round(pred.confidence * 100)}%
+                      </span>
+                    </div>
+
+                    {/* Per-class probability bars */}
+                    <div className="space-y-1">
+                      {ALL_LABELS.map((lbl) => {
+                        const p = pred.classProbabilities[lbl] ?? 0;
+                        const isTop = lbl === pred.label;
+                        const barColor = lbl.startsWith('hostile')
+                          ? '#ef4444'
+                          : lbl === 'friendly' ? '#3b82f6'
+                          : lbl === 'civilian' ? '#f59e0b'
+                          : '#6b7280';
+                        return (
+                          <div key={lbl} className="flex items-center space-x-2">
+                            <span className={`text-[10px] w-28 truncate ${ isTop ? 'text-white font-bold' : 'text-slate-500'}`}>
+                              {lbl.replace(/_/g, ' ')}
+                            </span>
+                            <div className="flex-1 h-1.5 bg-slate-800 rounded overflow-hidden">
+                              <div
+                                className="h-full rounded transition-all duration-500"
+                                style={{ width: `${Math.round(p * 100)}%`, background: barColor }}
+                              />
+                            </div>
+                            <span className={`text-[10px] w-7 text-right ${ isTop ? 'text-white font-bold' : 'text-slate-400'}`}>
+                              {Math.round(p * 100)}%
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 italic">
+                      Hint: verify with EO/IR and RF before acting on AI suggestion.
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Sensor Feeds Details */}
               <div className="grid grid-cols-2 gap-3 text-xs">
