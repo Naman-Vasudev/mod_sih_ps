@@ -36,7 +36,7 @@ export function updateSensorData(
   scenario: ScenarioConfig,
   simTime: number,
   deltaTime: number
-): { updatedTracks: Map<string, TrackSensorData>; newSweepAngle: number; updatedGhostBlips: Array<{ id: string; x: number; y: number; rcs: number }> } {
+): { updatedTracks: Map<string, TrackSensorData>; newSweepAngle: number } {
   // Update radar sweep angle (1.5s full 360 rotation = 240 deg/s)
   const newSweepAngle = (sensorState.radarSweepAngle + 240 * deltaTime) % 360;
 
@@ -46,15 +46,11 @@ export function updateSensorData(
   const isFog = scenario.environment.weather === 'fog';
   const isRain = scenario.environment.weather === 'rain';
   const isUrban = scenario.environment.terrain === 'urban';
-  const isMountain = scenario.environment.terrain === 'mountain';
 
   const eoMaxRange = isNight ? (isFog ? 400 : 700) : isFog ? 800 : isRain ? 1000 : 1400;
   const radarMaxRange = isRain ? 2800 : 3500;
   const rfMaxRange = scenario.sensorDegradation.rfJitter ? 1800 : 2500;
   const acousticMaxRange = 650;
-
-  // Intermittent radar outage cycle (e.g. 7s jamming outage every 24s)
-  const isRadarInOutage = scenario.sensorDegradation.radarOutage && (Math.floor(simTime) % 24 >= 14 && Math.floor(simTime) % 24 <= 21);
 
   entities.forEach((entity) => {
     if (!entity.active || entity.status !== 'active') return;
@@ -66,24 +62,19 @@ export function updateSensorData(
 
     // 1. Radar Detection check
     let radarDetected = false;
-    if (sensorState.radarActive && dist <= radarMaxRange && !isRadarInOutage) {
+    if (sensorState.radarActive && dist <= radarMaxRange) {
       // Check RCS & altitude sensitivity
       const minRCS = (dist / 3500) ** 2 * 0.02; // Small RCS hard to see at far range
       if (entity.rcs >= minRCS) {
         // Check Urban shadow zone (random occlusion mask behind buildings)
         let occluded = false;
         if (isUrban && dist > 1200) {
+          // Urban terrain shadowing for low altitude
           if (entity.altitude < 100 && Math.floor(bearing / 30) % 2 === 0) {
             occluded = true;
           }
         }
-        // Mountain shadow zone (occlusion behind ridges at lower altitudes)
-        if (isMountain && dist > 1800) {
-          if (entity.altitude < 120 && (bearing > 45 && bearing < 85 || bearing > 220 && bearing < 260)) {
-            occluded = true;
-          }
-        }
-        if (!occluded) {
+        if (!occluded && !scenario.sensorDegradation.radarOutage) {
           radarDetected = true;
           detectedBy.push('radar');
         }
@@ -179,17 +170,5 @@ export function updateSensorData(
     }
   });
 
-  // Generate ghost blips / false radar clutter if falseBlips degradation is active
-  const updatedGhostBlips: Array<{ id: string; x: number; y: number; rcs: number }> = [];
-  if (sensorState.radarActive && scenario.sensorDegradation.falseBlips && !isRadarInOutage) {
-    // 2 drifting ghost clutter points
-    const g1X = 1400 * Math.cos(simTime * 0.05 + 1.2) + Math.sin(simTime * 2) * 40;
-    const g1Y = 1600 * Math.sin(simTime * 0.04 + 0.8) + Math.cos(simTime * 2) * 40;
-    const g2X = -2100 * Math.cos(simTime * 0.03 + 2.5);
-    const g2Y = -1200 * Math.sin(simTime * 0.03 + 2.1);
-    updatedGhostBlips.push({ id: 'GHOST-01', x: g1X, y: g1Y, rcs: 0.006 });
-    updatedGhostBlips.push({ id: 'GHOST-02', x: g2X, y: g2Y, rcs: 0.008 });
-  }
-
-  return { updatedTracks, newSweepAngle, updatedGhostBlips };
+  return { updatedTracks, newSweepAngle };
 }

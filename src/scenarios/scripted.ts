@@ -3,8 +3,8 @@ import type { ScenarioConfig } from '../types';
 export const SCRIPTED_SCENARIOS: ScenarioConfig[] = [
   {
     id: 'scripted-1-dawn-recon',
-    name: 'Dawn Recon (Punjab Border Sector)',
-    description: 'Single commercial-derivative quadcopter conducting aerial reconnaissance over an Indian Army forward operating post at dawn. Ideal for learning radar detection, optical camera slewing, and soft-kill RF jamming.',
+    name: 'Dawn Recon (Tutorial)',
+    description: 'Single hostile quadcopter conducting aerial reconnaissance at dawn. Ideal for learning basic detection, EO slewing, and RF jamming.',
     seed: 101,
     difficulty: 1,
     environment: {
@@ -38,8 +38,8 @@ export const SCRIPTED_SCENARIOS: ScenarioConfig[] = [
   },
   {
     id: 'scripted-2-convoy-kamikaze',
-    name: 'Convoy Kamikaze (Thar Desert Outpost)',
-    description: 'High-speed autonomous loitering munition diving at low altitude against a military supply convoy in the desert at night. Fast kinetic intercept required.',
+    name: 'Convoy Kamikaze',
+    description: 'High-speed autonomous attack drone making a direct low-altitude raid on base asset at night. Rapid response required!',
     seed: 202,
     difficulty: 3,
     environment: {
@@ -73,8 +73,8 @@ export const SCRIPTED_SCENARIOS: ScenarioConfig[] = [
   },
   {
     id: 'scripted-3-bird-confusion',
-    name: 'Decoy Confusion (Rann Wetland Sector)',
-    description: 'Complex air picture in foggy border marshlands with migratory bird flocks, civilian drone intrusion, and a covert attack UAV masked in clutter.',
+    name: 'Bird & Decoy Confusion',
+    description: 'Complex air picture with migratory bird flocks, a local hobbyist drone, and a covert hostile attack drone hiding among decoys.',
     seed: 303,
     difficulty: 5,
     environment: {
@@ -122,8 +122,8 @@ export const SCRIPTED_SCENARIOS: ScenarioConfig[] = [
   },
   {
     id: 'scripted-4-urban-swarm',
-    name: 'Urban Swarm Raid (Western Command Hub)',
-    description: 'Coordinated 12-drone saturation swarm navigating dense military cantonment infrastructure. Buildings create radar shadowing and pop-up vector challenges.',
+    name: 'Urban Swarm Raid',
+    description: 'Coordinated 12-drone attack swarm navigating high-rise urban canyons. Buildings cause radar shadow zones and sudden pop-up threats.',
     seed: 404,
     difficulty: 7,
     environment: {
@@ -156,8 +156,8 @@ export const SCRIPTED_SCENARIOS: ScenarioConfig[] = [
   },
   {
     id: 'scripted-5-friendly-risk',
-    name: 'Friendly Risk (Ladakh High-Altitude Post)',
-    description: 'Friendly Indian Army surveillance UAVs operating with intermittent IFF transponder squawks in high-altitude mountain terrain alongside hostile loitering munitions.',
+    name: 'Friendly Fire Risk',
+    description: 'Friendly patrol UAVs with malfunctioning IFF transponders operate in the sector alongside hostile recon and kamikaze drones.',
     seed: 505,
     difficulty: 8,
     environment: {

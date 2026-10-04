@@ -121,7 +121,7 @@ export interface TraineeActionRecord {
     timestamp: number;
     actionType: 'detect' | 'classify' | 'engage' | 'alarm' | 'sensor_toggle';
     trackId: string;
-    payload?: any;
+    payload: any;
 }
 
 export interface EntityReplayFrame {
