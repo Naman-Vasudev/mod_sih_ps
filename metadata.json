@@ -1,6 +1,0 @@
-{
-  "name": "C-UAS Threat Simulation Trainer",
-  "description": "Tactical drone and counter-drone defense simulator with real-time radar, multi-spectral sensor feeds, procedural missions, decision trees, and after-action reporting.",
-  "permissions": [],
-  "capabilities": []
-}

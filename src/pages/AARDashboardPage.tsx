@@ -3,7 +3,6 @@ import type { SessionResult } from '../types';
 import { storageService, type CurrentUser } from '../storage/storageService';
 import { RadarCanvas } from '../components/RadarCanvas';
 import { createInitialSensorState } from '../sim/sensors';
-import { soundFx } from '../utils/audio';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -19,7 +18,7 @@ import {
 } from 'chart.js';
 import { Line, Radar, Bar } from 'react-chartjs-2';
 import jsPDF from 'jspdf';
-import { BarChart3, Download, Play, Pause, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { BarChart3, Download, Play, Pause, FileText } from 'lucide-react';
 
 ChartJS.register(
   CategoryScale,
@@ -39,17 +38,21 @@ interface AARDashboardPageProps {
 }
 
 export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser }) => {
-  const [sessions] = useState<SessionResult[]>(() => storageService.getSessions());
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => {
-    const data = storageService.getSessions();
-    return data.length > 0 ? data[0].id : null;
-  });
+  const [sessions, setSessions] = useState<SessionResult[]>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   // Replay Player State
   const [replayTime, setReplayTime] = useState<number>(0);
   const [isPlayingReplay, setIsPlayingReplay] = useState<boolean>(false);
   const [replaySpeed, setReplaySpeed] = useState<number>(1);
-  const [expandedTrack, setExpandedTrack] = useState<string | null>(null);
+
+  useEffect(() => {
+    const data = storageService.getSessions();
+    setSessions(data);
+    if (data.length > 0) {
+      setSelectedSessionId((prev) => prev ?? data[0].id);
+    }
+  }, []);
 
   const selectedSession = sessions.find((s) => s.id === selectedSessionId) || sessions[0];
 
@@ -72,7 +75,7 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
 
   if (!selectedSession) {
     return (
-      <div className="p-8 bg-slate-950 text-slate-200 font-sans text-center">
+      <div className="p-8 bg-zinc-950 text-emerald-400 font-mono text-center">
         No training sessions recorded yet. Run a simulator mission first!
       </div>
     );
@@ -90,7 +93,6 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
         backgroundColor: 'rgba(16, 185, 129, 0.15)',
         fill: true,
         tension: 0.3,
-        pointBackgroundColor: '#10b981',
       },
     ],
   };
@@ -110,7 +112,6 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
         backgroundColor: 'rgba(6, 182, 212, 0.25)',
         borderColor: '#06b6d4',
         borderWidth: 2,
-        pointBackgroundColor: '#06b6d4',
       },
     ],
   };
@@ -129,7 +130,7 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
       {
         label: 'Mistake Occurrences across Unit',
         data: Object.values(mistakeCounts).slice(0, 5),
-        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+        backgroundColor: 'rgba(239, 68, 68, 0.6)',
         borderColor: '#ef4444',
         borderWidth: 1,
       },
@@ -137,14 +138,7 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
   };
 
   // Replay current frame calculation
-  const frames = selectedSession.replayFrames || [];
-  let currentFrame = null;
-  if (frames.length > 0) {
-    currentFrame = frames.reduce((prev, curr) =>
-      Math.abs(curr.timestamp - replayTime) < Math.abs(prev.timestamp - replayTime) ? curr : prev
-    );
-  }
-
+  const currentFrame = selectedSession.replayFrames?.find((f) => Math.abs(f.timestamp - replayTime) < 0.3);
   const replayTracks = new Map();
   const replayEntities: any[] = [];
 
@@ -188,9 +182,7 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
 
   // Export session JSON
   const handleExportJSON = () => {
-    soundFx.playClick();
-    const dataStr =
-      'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(selectedSession, null, 2));
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(selectedSession, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute('href', dataStr);
     dlAnchorElem.setAttribute('download', `session_aar_${selectedSession.id}.json`);
@@ -199,7 +191,6 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
 
   // Export PDF Report using jsPDF
   const handleExportPDF = () => {
-    soundFx.playClick();
     const doc = new jsPDF();
     doc.setFont('courier', 'bold');
     doc.setFontSize(16);
@@ -237,66 +228,60 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
   };
 
   return (
-    <div className="min-h-[calc(100vh-60px)] bg-slate-950 text-slate-100 font-sans p-6 select-none">
+    <div className="min-h-[calc(100vh-60px)] bg-zinc-950 text-emerald-400 font-mono p-6 select-none">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-5 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-4">
           <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center space-x-2.5">
+            <h1 className="text-2xl font-extrabold tracking-wider text-emerald-300 flex items-center space-x-2">
               <BarChart3 className="w-6 h-6 text-emerald-400" />
-              <span>AFTER-ACTION REVIEW (AAR) ANALYTICS &amp; REPLAY</span>
+              <span>AFTER-ACTION REVIEW (AAR) ANALYTICS & REPLAY</span>
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              Historical performance trends, multi-axis skill radar breakdown, interactive replay viewer, and PDF report export.
+            <p className="text-xs text-zinc-400">
+              Session history, skill radar breakdown, interactive replay player, and PDF/JSON export.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 font-mono">
+          <div className="flex space-x-2 mt-4 md:mt-0">
             <button
               onClick={handleExportJSON}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold rounded-lg flex items-center space-x-1.5 transition cursor-pointer"
+              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-bold rounded flex items-center space-x-1"
             >
-              <Download className="w-4 h-4 text-cyan-400" />
+              <Download className="w-3.5 h-3.5" />
               <span>EXPORT JSON</span>
             </button>
 
             <button
               onClick={handleExportPDF}
-              className="px-3.5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-lg flex items-center space-x-1.5 shadow-md transition cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 text-xs font-bold rounded flex items-center space-x-1"
             >
-              <FileText className="w-4 h-4 fill-current" />
+              <FileText className="w-3.5 h-3.5" />
               <span>EXPORT PDF REPORT</span>
             </button>
           </div>
         </div>
 
         {/* Charts Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Performance Line Chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 shadow-lg">
-            <h2 className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
-              SCORE TREND ACROSS SESSIONS
-            </h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2 shadow-xl">
+            <h2 className="text-xs font-bold text-emerald-300">SCORE TREND ACROSS SESSIONS</h2>
             <div className="h-48">
               <Line data={lineChartData} options={{ responsive: true, maintainAspectRatio: false }} />
             </div>
           </div>
 
           {/* Skill Radar Chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 shadow-lg">
-            <h2 className="text-xs font-mono font-bold text-cyan-400 uppercase tracking-wider">
-              SKILL DIMENSIONS RADAR
-            </h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2 shadow-xl">
+            <h2 className="text-xs font-bold text-cyan-300">SKILL DIMENSIONS RADAR</h2>
             <div className="h-48 flex items-center justify-center">
               <Radar data={radarChartData} options={{ responsive: true, maintainAspectRatio: false }} />
             </div>
           </div>
 
           {/* Mistake Bar Chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 shadow-lg">
-            <h2 className="text-xs font-mono font-bold text-red-400 uppercase tracking-wider">
-              UNIT MISTAKE CATEGORIES
-            </h2>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-2 shadow-xl">
+            <h2 className="text-xs font-bold text-red-400">UNIT MISTAKE CATEGORIES</h2>
             <div className="h-48">
               <Bar data={barChartData} options={{ responsive: true, maintainAspectRatio: false }} />
             </div>
@@ -306,35 +291,34 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
         {/* Replay Player & Session Selector Workspace */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Session Selector */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3 shadow-lg">
-            <h2 className="text-xs font-mono font-bold text-slate-300 border-b border-slate-800 pb-2 uppercase tracking-wider">
-              RECORDED SESSIONS ({sessions.length})
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-3">
+            <h2 className="text-xs font-bold text-zinc-400 border-b border-zinc-800 pb-1">
+              PAST SESSIONS ({sessions.length})
             </h2>
 
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1 font-mono">
+            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-1">
               {sessions.map((s) => {
                 const isSelected = s.id === selectedSessionId;
                 return (
                   <div
                     key={s.id}
                     onClick={() => {
-                      soundFx.playClick();
                       setSelectedSessionId(s.id);
                       setReplayTime(0);
                       setIsPlayingReplay(false);
                     }}
-                    className={`p-3 rounded-xl border text-xs cursor-pointer transition ${
+                    className={`p-3 rounded border text-xs cursor-pointer transition ${
                       isSelected
-                        ? 'bg-slate-800 border-emerald-500 shadow-md'
-                        : 'bg-slate-950 border-slate-800 hover:border-slate-700'
+                        ? 'bg-emerald-950 border-emerald-500 shadow-md'
+                        : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-white font-sans">{s.scenarioName}</span>
+                      <span className="font-bold text-zinc-200">{s.scenarioName}</span>
                       <span className="font-bold text-emerald-400">{s.finalScore}% ({s.grade})</span>
                     </div>
 
-                    <div className="flex justify-between text-[11px] text-slate-400">
+                    <div className="flex justify-between text-[10px] text-zinc-500">
                       <span>{s.traineeName}</span>
                       <span>{new Date(s.timestamp).toLocaleDateString()}</span>
                     </div>
@@ -345,24 +329,21 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
           </div>
 
           {/* Right Interactive Replay Viewer */}
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 flex flex-col shadow-lg">
-            <div className="flex flex-wrap justify-between items-center border-b border-slate-800 pb-3 gap-3">
+          <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 rounded-lg p-4 space-y-4 flex flex-col">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
               <div>
-                <h2 className="text-sm font-bold text-cyan-300 font-mono">
+                <h2 className="text-sm font-bold text-cyan-300">
                   REPLAY VIEWER: {selectedSession.scenarioName} (SEED: {selectedSession.seed})
                 </h2>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  Ground Truth Revealed: Circles show true entity positions and trajectory vs operator decisions.
+                <p className="text-[11px] text-zinc-400">
+                  Ground Truth Revealed: Green circles show true entity locations vs trainee actions.
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2 text-xs font-mono">
+              <div className="flex items-center space-x-2 text-xs">
                 <button
-                  onClick={() => {
-                    soundFx.playClick();
-                    setIsPlayingReplay(!isPlayingReplay);
-                  }}
-                  className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-slate-950 rounded-lg font-bold flex items-center space-x-1.5 transition cursor-pointer"
+                  onClick={() => setIsPlayingReplay(!isPlayingReplay)}
+                  className="px-3 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-700 text-cyan-300 rounded font-bold flex items-center space-x-1"
                 >
                   {isPlayingReplay ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
                   <span>{isPlayingReplay ? 'PAUSE' : 'PLAY REPLAY'}</span>
@@ -371,20 +352,20 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
                 <select
                   value={replaySpeed}
                   onChange={(e) => setReplaySpeed(parseFloat(e.target.value))}
-                  className="bg-slate-950 border border-slate-700 text-cyan-300 px-2 py-1.5 rounded-lg font-bold focus:outline-none"
+                  className="bg-zinc-950 border border-zinc-700 text-cyan-300 px-2 py-1 rounded font-bold"
                 >
-                  <option value={1}>1x Speed</option>
-                  <option value={2}>2x Speed</option>
-                  <option value={4}>4x Speed</option>
+                  <option value={1}>1x</option>
+                  <option value={2}>2x</option>
+                  <option value={4}>4x</option>
                 </select>
               </div>
             </div>
 
             {/* Replay Timeline Slider */}
-            <div className="space-y-1.5 font-mono">
-              <div className="flex justify-between text-xs text-slate-300 font-bold">
+            <div className="space-y-1">
+              <div className="flex justify-between text-[11px] text-zinc-400 font-bold">
                 <span>REPLAY TIMESTAMP: {replayTime.toFixed(1)}s</span>
-                <span>TOTAL DURATION: {selectedSession.duration}s</span>
+                <span>DURATION: {selectedSession.duration}s</span>
               </div>
               <input
                 type="range"
@@ -397,8 +378,8 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
               />
             </div>
 
-            {/* Radar Canvas Replay Display */}
-            <div className="flex justify-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+            {/* Canvas Replay Display */}
+            <div className="flex justify-center bg-black p-2 rounded border border-zinc-800">
               <RadarCanvas
                 tracks={replayTracks}
                 entities={replayEntities}
@@ -416,110 +397,6 @@ export const AARDashboardPage: React.FC<AARDashboardPageProps> = ({ currentUser 
             </div>
           </div>
         </div>
-
-        {/* Selected Session Decision Tree Breakdown */}
-        {selectedSession.entityEvaluations && selectedSession.entityEvaluations.length > 0 && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-lg">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h2 className="text-sm font-bold text-white font-mono">
-                DECISION-TREE NODE EVALUATIONS: {selectedSession.scenarioName} ({selectedSession.traineeName})
-              </h2>
-              <span className="text-xs text-slate-400 font-mono">
-                PASS/FAIL INSPECTION FOR EVERY SPAWNED THREAT TRACK
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-[11px] uppercase">
-                    <th className="py-2.5 px-3">TRACK ID</th>
-                    <th className="py-2.5 px-3">TRUE THREAT TYPE</th>
-                    <th className="py-2.5 px-3">OPERATOR CLASSIFICATION</th>
-                    <th className="py-2.5 px-3">DETECTION TIME</th>
-                    <th className="py-2.5 px-3">EVALUATION</th>
-                    <th className="py-2.5 px-3 text-right">ACTION</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {selectedSession.entityEvaluations.map((evalItem) => {
-                    const isExpanded = expandedTrack === evalItem.trackId;
-                    return (
-                      <React.Fragment key={evalItem.trackId}>
-                        <tr className="hover:bg-slate-800/50 transition">
-                          <td className="py-3 px-3 font-bold text-emerald-400">{evalItem.trackId}</td>
-                          <td className="py-3 px-3 uppercase text-slate-200 font-bold">{evalItem.trueType}</td>
-                          <td className="py-3 px-3 uppercase text-cyan-300">{evalItem.userClassification}</td>
-                          <td className="py-3 px-3 text-slate-300">
-                            {evalItem.detectionTime !== null ? `${evalItem.detectionTime.toFixed(1)}s` : 'MISSED'}
-                          </td>
-                          <td className="py-3 px-3 font-bold">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
-                                evalItem.verdict === 'PASS'
-                                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-600'
-                                  : evalItem.verdict === 'PARTIAL'
-                                  ? 'bg-amber-950 text-amber-300 border border-amber-600'
-                                  : 'bg-red-950 text-red-300 border border-red-600'
-                              }`}
-                            >
-                              {evalItem.verdict}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <button
-                              onClick={() => {
-                                soundFx.playClick();
-                                setExpandedTrack(isExpanded ? null : evalItem.trackId);
-                              }}
-                              className="text-xs text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-                            >
-                              {isExpanded ? 'Hide Nodes' : 'Inspect Tree'}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {isExpanded && (
-                          <tr>
-                            <td colSpan={6} className="bg-slate-950 p-4 border-l-4 border-cyan-500 rounded-b-xl">
-                              <div className="space-y-2 font-sans">
-                                <span className="text-xs font-mono font-bold text-cyan-300 uppercase">
-                                  TACTICAL DECISION NODES FOR {evalItem.trackId}:
-                                </span>
-                                <div className="space-y-2 text-xs">
-                                  {evalItem.decisionNodes.map((node) => (
-                                    <div
-                                      key={node.id}
-                                      className={`p-3 rounded-xl border flex items-start space-x-2.5 ${
-                                        node.passed
-                                          ? 'bg-emerald-950/40 border-emerald-800 text-emerald-200'
-                                          : 'bg-red-950/40 border-red-800 text-red-200'
-                                      }`}
-                                    >
-                                      {node.passed ? (
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                                      ) : (
-                                        <XCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                                      )}
-                                      <div>
-                                        <span className="font-bold block font-mono text-xs">{node.title}</span>
-                                        <span className="text-xs opacity-90">{node.reason}</span>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
